@@ -155,3 +155,60 @@ def make_local_linear_trend(
         m0=np.asarray(m0, dtype=float),
         C0=np.asarray(C0, dtype=float),
     )
+
+
+_SEASONAL_NUGGET = 1e-8
+
+
+def make_seasonal_factor(
+    period: int,
+    V: float,
+    W_season: float,
+    m0: np.ndarray | None = None,
+    C0: np.ndarray | None = None,
+) -> DLMSpec:
+    """Seasonal DLM in factor form with sum-to-zero constraint.
+
+    For a period-s seasonal pattern, the state has dim d = s - 1 and encodes
+    the last s-1 seasonal effects; the current-time seasonal factor is their
+    negated sum (enforcing sum-to-zero across a full cycle).
+
+        F = [1, 0, ..., 0]                   # observation reads first slot
+        G = companion form:
+            [[-1, -1, ..., -1],              # new factor = -sum of previous
+             [ 1,  0, ...,  0],
+             [ 0,  1, ...,  0],
+              ...
+             [ 0,  0, ..., 1, 0]]
+
+    Only the top-left entry of W carries the innovation variance W_season; a
+    small nugget on the remaining diagonal keeps W strictly PD for validation.
+    """
+    if period < 2:
+        raise ValueError(f"period must be >= 2, got {period}")
+    d = period - 1
+
+    F = np.zeros((1, d))
+    F[0, 0] = 1.0
+
+    G = np.zeros((d, d))
+    G[0, :] = -1.0
+    if d > 1:
+        # Identity-like shift: row i (>=1) picks up column i-1
+        for i in range(1, d):
+            G[i, i - 1] = 1.0
+
+    W = np.diag([float(W_season)] + [_SEASONAL_NUGGET] * (d - 1))
+
+    if m0 is None:
+        m0 = np.zeros(d)
+    if C0 is None:
+        C0 = 1e3 * np.eye(d)
+
+    return DLMSpec(
+        F=F, G=G,
+        V=np.array([[float(V)]]),
+        W=W,
+        m0=np.asarray(m0, dtype=float),
+        C0=np.asarray(C0, dtype=float),
+    )
