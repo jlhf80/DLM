@@ -19,6 +19,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 import numpy as np
+from scipy.linalg import block_diag as _block_diag  # type: ignore[import-untyped]
 
 _TOL = 1e-8
 _DIAG_MIN = 1e-12
@@ -212,3 +213,28 @@ def make_seasonal_factor(
         m0=np.asarray(m0, dtype=float),
         C0=np.asarray(C0, dtype=float),
     )
+
+
+def combine(*specs: DLMSpec) -> DLMSpec:
+    """Superpose component DLMs into a single block-diagonal DLM.
+
+    Components must share the same observation dimension p and observation
+    covariance V. The state vector is the concatenation of each component's
+    state; G and W become block-diagonal; F is horizontally stacked.
+    """
+    if len(specs) < 2:
+        raise ValueError(f"combine requires at least two specs, got {len(specs)}")
+    p0 = specs[0].p
+    V0 = specs[0].V
+    for s in specs[1:]:
+        if s.p != p0:
+            raise ValueError(f"all specs must share observation dimension; got {p0} and {s.p}")
+        if not np.allclose(s.V, V0):
+            raise ValueError("all specs must share observation noise covariance V")
+
+    F = np.hstack([s.F for s in specs])
+    G = _block_diag(*[s.G for s in specs])
+    W = _block_diag(*[s.W for s in specs])
+    m0 = np.concatenate([s.m0 for s in specs])
+    C0 = _block_diag(*[s.C0 for s in specs])
+    return DLMSpec(F=F, G=G, V=V0, W=W, m0=m0, C0=C0)

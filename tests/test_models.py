@@ -189,3 +189,70 @@ class TestMakeSeasonalFactor:
     def test_period_below_2_raises(self):
         with pytest.raises(ValueError, match="period"):
             make_seasonal_factor(period=1, V=0.5, W_season=0.02)
+
+
+class TestCombine:
+    def test_trend_plus_seasonal_shapes(self):
+        from scipy.linalg import block_diag
+
+        from engine.models import combine
+
+        trend = make_local_linear_trend(V=0.5, W_level=0.05, W_slope=0.01)
+        season = make_seasonal_factor(period=4, V=0.5, W_season=0.02)
+        # Must pass one V; combine uses V of the first spec (all specs share the
+        # same observation noise in a component DLM; enforced by an assertion).
+        combined = combine(trend, season)
+        assert combined.d == trend.d + season.d  # 2 + 3 = 5
+        assert combined.p == 1
+        np.testing.assert_array_equal(
+            combined.F,
+            np.hstack([trend.F, season.F]),
+        )
+        np.testing.assert_array_equal(
+            combined.G,
+            block_diag(trend.G, season.G),
+        )
+        np.testing.assert_array_equal(
+            combined.W,
+            block_diag(trend.W, season.W),
+        )
+
+    def test_rejects_single_arg(self):
+        from engine.models import combine
+
+        trend = make_local_linear_trend(V=0.5, W_level=0.05, W_slope=0.01)
+        with pytest.raises(ValueError, match="at least two"):
+            combine(trend)
+
+    def test_rejects_mismatched_V(self):
+        from engine.models import combine
+
+        a = make_local_level(V=0.5, W_level=0.1)
+        b = make_local_level(V=1.0, W_level=0.1)
+        with pytest.raises(ValueError, match="observation"):
+            combine(a, b)
+
+    def test_rejects_mismatched_p(self):
+        from engine.models import combine
+
+        # Hand-construct a p=2 spec
+        p2 = DLMSpec(
+            F=np.ones((2, 1)),
+            G=np.eye(1),
+            V=np.eye(2),
+            W=np.eye(1),
+            m0=np.zeros(1),
+            C0=np.eye(1),
+        )
+        p1 = make_local_level(V=1.0, W_level=0.1)
+        with pytest.raises(ValueError, match="observation dimension"):
+            combine(p1, p2)
+
+    def test_priors_block_diagonal(self):
+        from engine.models import combine
+
+        a = make_local_level(V=0.5, W_level=0.1, m0=10.0, C0=5.0)
+        b = make_local_level(V=0.5, W_level=0.2, m0=-3.0, C0=1.0)
+        c = combine(a, b)
+        np.testing.assert_array_equal(c.m0, [10.0, -3.0])
+        np.testing.assert_array_equal(c.C0, np.diag([5.0, 1.0]))
