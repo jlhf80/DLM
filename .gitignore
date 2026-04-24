@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+dist/
+build/
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Superpowers workspace
+.superpowers/
+
+# macOS / editors
+.DS_Store
+.vscode/
+.idea/
+
+# Jupyter (future notebook variant)
+.ipynb_checkpoints/
