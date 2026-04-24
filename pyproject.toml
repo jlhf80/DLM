@@ -1,0 +1,57 @@
+[project]
+name = "dlm-tutorial"
+version = "0.1.0"
+description = "Interactive tutorial for building intuition about Dynamic Linear Models."
+requires-python = ">=3.11"
+dependencies = [
+    "numpy>=1.26",
+    "scipy>=1.11",
+    "statsmodels>=0.14",
+    "streamlit>=1.30",
+    "plotly>=5.18",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.3",
+    "mypy>=1.8",
+]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["engine*", "lessons*", "ui*"]
+exclude = ["tests*"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+addopts = "-q --strict-markers"
+filterwarnings = [
+    "error",                                               # promote warnings to errors in tests
+    "ignore::DeprecationWarning:statsmodels.*",            # statsmodels is chatty
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["E501"]  # line length enforced by formatter
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+files = ["engine", "lessons"]
+# UI layer not strictly typed — Streamlit's stubs are incomplete
+[[tool.mypy.overrides]]
+module = "statsmodels.*"
+ignore_missing_imports = true
+[[tool.mypy.overrides]]
+module = "plotly.*"
+ignore_missing_imports = true
