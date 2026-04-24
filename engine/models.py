@@ -124,3 +124,34 @@ def make_local_level(
         m0=np.array([float(m0)]),
         C0=np.array([[float(C0)]]),
     )
+
+
+def make_local_linear_trend(
+    V: float,
+    W_level: float,
+    W_slope: float,
+    m0: np.ndarray | None = None,
+    C0: np.ndarray | None = None,
+) -> DLMSpec:
+    """Local-linear-trend DLM (level + slope).
+
+    State theta_t = (mu_t, beta_t); d = 2.
+        y_t = mu_t + v_t
+        mu_t = mu_{t-1} + beta_{t-1} + w1_t
+        beta_t = beta_{t-1} + w2_t
+    with w1 ~ N(0, W_level), w2 ~ N(0, W_slope), independent.
+    """
+    F = np.array([[1.0, 0.0]])
+    G = np.array([[1.0, 1.0], [0.0, 1.0]])
+    W = np.diag([float(W_level), float(W_slope)])
+    if m0 is None:
+        m0 = np.zeros(2)
+    if C0 is None:
+        C0 = 1e3 * np.eye(2)
+    return DLMSpec(
+        F=F, G=G,
+        V=np.array([[float(V)]]),
+        W=W,
+        m0=np.asarray(m0, dtype=float),
+        C0=np.asarray(C0, dtype=float),
+    )

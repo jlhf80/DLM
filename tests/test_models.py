@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from engine.models import DLMSpec, make_local_level
+from engine.models import DLMSpec, make_local_level, make_local_linear_trend
 
 
 def _valid_spec_kwargs(p: int = 1, d: int = 2) -> dict:
@@ -117,3 +117,29 @@ class TestMakeLocalLevel:
     def test_rejects_zero_W(self):
         with pytest.raises(ValueError, match="W"):
             make_local_level(V=0.5, W_level=0.0)
+
+
+class TestMakeLocalLinearTrend:
+    def test_shapes_and_matrices(self):
+        spec = make_local_linear_trend(V=0.5, W_level=0.05, W_slope=0.01)
+        assert spec.p == 1 and spec.d == 2
+        np.testing.assert_array_equal(spec.F, [[1.0, 0.0]])
+        np.testing.assert_array_equal(spec.G, [[1.0, 1.0], [0.0, 1.0]])
+
+    def test_W_is_diagonal_of_level_and_slope(self):
+        spec = make_local_linear_trend(V=0.5, W_level=0.05, W_slope=0.01)
+        np.testing.assert_array_equal(spec.W, [[0.05, 0.0], [0.0, 0.01]])
+
+    def test_default_prior_is_diffuse(self):
+        spec = make_local_linear_trend(V=0.5, W_level=0.05, W_slope=0.01)
+        np.testing.assert_array_equal(spec.m0, [0.0, 0.0])
+        np.testing.assert_array_equal(spec.C0, 1e3 * np.eye(2))
+
+    def test_custom_prior_shapes(self):
+        spec = make_local_linear_trend(
+            V=0.5, W_level=0.05, W_slope=0.01,
+            m0=np.array([100.0, 1.0]),
+            C0=np.diag([10.0, 0.5]),
+        )
+        np.testing.assert_array_equal(spec.m0, [100.0, 1.0])
+        np.testing.assert_array_equal(spec.C0, np.diag([10.0, 0.5]))
