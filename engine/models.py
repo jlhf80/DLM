@@ -102,3 +102,25 @@ class DLMSpec:
             tuple(np.ascontiguousarray(getattr(self, k)).tobytes()
                   for k in ("F", "G", "V", "W", "m0", "C0"))
         )
+
+
+def make_local_level(
+    V: float,
+    W_level: float,
+    m0: float = 0.0,
+    C0: float = 1e3,
+) -> DLMSpec:
+    """Local-level (random-walk-plus-noise) DLM.
+
+    State dim d = 1. theta_t is the unobserved level.
+        y_t = theta_t + v_t,     v_t ~ N(0, V)
+        theta_t = theta_{t-1} + w_t,  w_t ~ N(0, W_level)
+    """
+    return DLMSpec(
+        F=np.array([[1.0]]),
+        G=np.array([[1.0]]),
+        V=np.array([[float(V)]]),
+        W=np.array([[float(W_level)]]),
+        m0=np.array([float(m0)]),
+        C0=np.array([[float(C0)]]),
+    )

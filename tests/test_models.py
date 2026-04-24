@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 
-from engine.models import DLMSpec
+from engine.models import DLMSpec, make_local_level
 
 
 def _valid_spec_kwargs(p: int = 1, d: int = 2) -> dict:
@@ -85,3 +85,35 @@ class TestDLMSpecEqualityAndHash:
         d = {a: "value"}
         b = DLMSpec(**_valid_spec_kwargs())
         assert d[b] == "value"
+
+
+class TestMakeLocalLevel:
+    def test_default_returns_valid_spec(self):
+        spec = make_local_level(V=0.5, W_level=0.1)
+        assert spec.p == 1 and spec.d == 1
+        assert spec.F.shape == (1, 1)
+        assert spec.F[0, 0] == 1.0
+        assert spec.G.shape == (1, 1)
+        assert spec.G[0, 0] == 1.0
+        assert spec.V[0, 0] == 0.5
+        assert spec.W[0, 0] == 0.1
+
+    def test_accepts_scalar_V(self):
+        spec = make_local_level(V=2.0, W_level=0.1)
+        assert isinstance(spec.V, np.ndarray)
+        assert spec.V.shape == (1, 1)
+        assert spec.V[0, 0] == 2.0
+
+    def test_prior_defaults(self):
+        spec = make_local_level(V=0.5, W_level=0.1)
+        assert spec.m0[0] == 0.0
+        assert spec.C0[0, 0] == 1e3  # diffuse default
+
+    def test_custom_prior(self):
+        spec = make_local_level(V=0.5, W_level=0.1, m0=10.0, C0=4.0)
+        assert spec.m0[0] == 10.0
+        assert spec.C0[0, 0] == 4.0
+
+    def test_rejects_zero_W(self):
+        with pytest.raises(ValueError, match="W"):
+            make_local_level(V=0.5, W_level=0.0)
