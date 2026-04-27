@@ -8,6 +8,8 @@ from lessons.workflow import (
     Lesson,
     ParamSpec,
     WorkflowStep,
+    canonical_step_ids,
+    make_default_workflow_steps,
 )
 
 
@@ -88,9 +90,6 @@ class TestWorkflowStepAndLesson:
             {p.name: p.default for p in lesson.param_schema}
         )
         assert isinstance(spec, DLMSpec)
-
-
-from lessons.workflow import canonical_step_ids, make_default_workflow_steps  # noqa: E402
 
 
 class TestCanonicalWorkflow:
