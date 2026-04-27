@@ -59,6 +59,33 @@ class TestChallengeQuestion:
                 feedback_correct="", feedback_incorrect="",
             )
 
+    def test_callable_correct_defers_validation_to_resolve(self):
+        # Construction succeeds even if the callable would later return
+        # a wrong-typed value — validation runs at resolve-time.
+        q = ChallengeQuestion(
+            kind="multiple_choice",
+            correct=lambda params: str(int(params["period"])),
+            feedback_correct="", feedback_incorrect="",
+        )
+        assert q.resolve({"period": 4}) == "4"
+        assert q.resolve({"period": 12}) == "12"
+
+    def test_resolve_validates_callable_return_value(self):
+        bad = ChallengeQuestion(
+            kind="multiple_choice",
+            correct=lambda params: 42,  # wrong type for multiple_choice
+            feedback_correct="", feedback_incorrect="",
+        )
+        with pytest.raises(ValueError, match="multiple_choice"):
+            bad.resolve({"period": 4})
+
+    def test_resolve_static_value_returns_unchanged(self):
+        q = ChallengeQuestion(
+            kind="multiple_choice", correct="a",
+            feedback_correct="", feedback_incorrect="",
+        )
+        assert q.resolve({}) == "a"
+
 
 class TestWorkflowStepAndLesson:
     def test_lesson_rejects_empty_workflow(self):
@@ -215,9 +242,11 @@ class TestSeasonalLesson:
         step4 = next(s for s in SEASONAL_LESSON.workflow_steps if s.id == "pick_components")
         assert step4.challenge.correct == {"level": False, "slope": False, "seasonal": True}
 
-    def test_specify_asks_period(self):
+    def test_specify_resolves_correct_to_current_period(self):
         step5 = next(s for s in SEASONAL_LESSON.workflow_steps if s.id == "specify")
         assert step5.challenge is not None
         assert step5.challenge.kind == "multiple_choice"
-        # Correct must be string (period label)
-        assert step5.challenge.correct in {"2", "4", "7", "12"}
+        # `correct` is a callable; it must resolve to the current period as a string.
+        assert step5.challenge.resolve({"period": 4}) == "4"
+        assert step5.challenge.resolve({"period": 7}) == "7"
+        assert step5.challenge.resolve({"period": 12}) == "12"

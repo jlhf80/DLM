@@ -50,7 +50,9 @@ _PICK_COMPONENTS_Q = ChallengeQuestion(
 
 _SPECIFY_Q = ChallengeQuestion(
     kind="multiple_choice",
-    correct="4",  # matches default period; lesson builder reads slider
+    # Resolve at grade-time so moving the period slider stays consistent
+    # with the answer key.
+    correct=lambda params: str(int(params["period"])),
     feedback_correct="Right — the ACF spike location gives the period.",
     feedback_incorrect=(
         "The period is the lag at which the ACF first shows a large "

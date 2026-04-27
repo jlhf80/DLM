@@ -35,36 +35,64 @@ class ParamSpec:
 
 @dataclass(frozen=True)
 class ChallengeQuestion:
+    """A graded prompt attached to a workflow step.
+
+    `correct` is either a static value matching `kind`, or a callable
+    `(params: dict[str, float]) -> static_value` that resolves to the
+    correct answer at grade-time. Use a callable when the right answer
+    depends on the user's current parameter settings (e.g. the seasonal
+    period). The static value is validated at construction; the callable's
+    return value is validated lazily by `resolve()`.
+    """
+
     kind: ChallengeKind
     correct: Any
     feedback_correct: str
     feedback_incorrect: str
 
     def __post_init__(self) -> None:
+        if self.kind not in ("multiple_choice", "numeric_range", "component_toggle"):
+            raise ValueError(f"unknown ChallengeQuestion kind {self.kind!r}")
+        if not callable(self.correct):
+            self._validate_value(self.correct)
+
+    def _validate_value(self, value: Any) -> None:
         if self.kind == "multiple_choice":
-            if not isinstance(self.correct, str):
+            if not isinstance(value, str):
                 raise ValueError(
-                    f"multiple_choice 'correct' must be str, got {type(self.correct).__name__}"
+                    f"multiple_choice 'correct' must be str, got {type(value).__name__}"
                 )
         elif self.kind == "numeric_range":
             ok = (
-                isinstance(self.correct, tuple)
-                and len(self.correct) == 2
-                and all(isinstance(x, (int, float)) for x in self.correct)
-                and self.correct[0] <= self.correct[1]
+                isinstance(value, tuple)
+                and len(value) == 2
+                and all(isinstance(x, (int, float)) for x in value)
+                and value[0] <= value[1]
             )
             if not ok:
                 raise ValueError(
-                    f"numeric_range 'correct' must be (low, high) tuple, got {self.correct!r}"
+                    f"numeric_range 'correct' must be (low, high) tuple, got {value!r}"
                 )
-        elif self.kind == "component_toggle":
-            if not (isinstance(self.correct, dict)
-                    and all(isinstance(v, bool) for v in self.correct.values())):
-                raise ValueError(
-                    f"component_toggle 'correct' must be dict[str, bool], got {self.correct!r}"
-                )
-        else:
-            raise ValueError(f"unknown ChallengeQuestion kind {self.kind!r}")
+        elif self.kind == "component_toggle" and not (
+            isinstance(value, dict)
+            and all(isinstance(v, bool) for v in value.values())
+        ):
+            raise ValueError(
+                f"component_toggle 'correct' must be dict[str, bool], got {value!r}"
+            )
+
+    def resolve(self, params: dict[str, float]) -> Any:
+        """Return the canonical correct answer for `params`.
+
+        If `correct` was provided as a callable, it is invoked with `params`
+        and its return value is validated against `kind`. Otherwise the
+        static value is returned unchanged.
+        """
+        if callable(self.correct):
+            value = self.correct(params)
+            self._validate_value(value)
+            return value
+        return self.correct
 
 
 @dataclass(frozen=True)
