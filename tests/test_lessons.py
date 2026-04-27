@@ -3,6 +3,7 @@
 import pytest
 
 from engine.models import DLMSpec, make_local_level
+from lessons import ALL_LESSONS, get_lesson
 from lessons.local_level import LESSON as LOCAL_LEVEL_LESSON
 from lessons.local_linear_trend import LESSON as LLT_LESSON
 from lessons.seasonal import LESSON as SEASONAL_LESSON
@@ -250,3 +251,58 @@ class TestSeasonalLesson:
         assert step5.challenge.resolve({"period": 4}) == "4"
         assert step5.challenge.resolve({"period": 7}) == "7"
         assert step5.challenge.resolve({"period": 12}) == "12"
+
+
+class TestLessonRegistry:
+    def test_contains_three_beginner_lessons(self):
+        ids = [lesson.id for lesson in ALL_LESSONS]
+        assert set(ids) == {"local_level", "local_linear_trend", "seasonal"}
+
+    def test_get_lesson_by_id(self):
+        lesson = get_lesson("local_level")
+        assert lesson.id == "local_level"
+
+    def test_get_unknown_raises(self):
+        with pytest.raises(KeyError, match="unknown"):
+            get_lesson("nonexistent")
+
+
+class TestAllLessonsIntegrity:
+    """Content-integrity checks across every shipped lesson."""
+
+    def test_all_model_builders_return_valid_spec_on_defaults(self):
+        for lesson in ALL_LESSONS:
+            defaults = {p.name: p.default for p in lesson.param_schema}
+            spec = lesson.model_builder(defaults)
+            assert isinstance(spec, DLMSpec)
+
+    def test_all_lessons_have_nine_steps(self):
+        ids = canonical_step_ids()
+        for lesson in ALL_LESSONS:
+            step_ids = [s.id for s in lesson.workflow_steps]
+            assert step_ids == ids, f"Lesson {lesson.id} has {step_ids}"
+
+    def test_all_plot_fns_declared(self):
+        """Every plot_fn referenced must be in the known plot-fn set.
+
+        The actual set is declared in ui/plots.py. We hard-code it here since
+        the UI layer isn't imported for this test (keeps tests runnable
+        without Streamlit).
+        """
+        allowed = {
+            "time_series",
+            "visual_decomposition",
+            "acf_pacf",
+            "acf_pacf_and_seasonal_subseries",
+            "blank",
+            "spec_preview",
+            "filter_state",
+            "diagnostics",
+            "forecast",
+            "reveal_overlay",
+        }
+        for lesson in ALL_LESSONS:
+            for step in lesson.workflow_steps:
+                assert step.plot_fn in allowed, (
+                    f"Lesson {lesson.id} step {step.id}: unknown plot_fn {step.plot_fn}"
+                )
