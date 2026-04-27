@@ -5,6 +5,7 @@ import pytest
 from engine.models import DLMSpec, make_local_level
 from lessons.local_level import LESSON as LOCAL_LEVEL_LESSON
 from lessons.local_linear_trend import LESSON as LLT_LESSON
+from lessons.seasonal import LESSON as SEASONAL_LESSON
 from lessons.workflow import (
     ChallengeQuestion,
     Lesson,
@@ -197,3 +198,26 @@ class TestLocalLinearTrendLesson:
     def test_param_schema_has_slope(self):
         names = [p.name for p in LLT_LESSON.param_schema]
         assert "W_slope" in names
+
+
+class TestSeasonalLesson:
+    def test_defaults_build_quarterly_spec(self):
+        params = {p.name: p.default for p in SEASONAL_LESSON.param_schema}
+        spec = SEASONAL_LESSON.model_builder(params)
+        # With default period=4, d = period - 1 = 3
+        assert spec.d == 3 and spec.p == 1
+
+    def test_quantify_step_uses_seasonal_plot(self):
+        step3 = next(s for s in SEASONAL_LESSON.workflow_steps if s.id == "quantify")
+        assert step3.plot_fn == "acf_pacf_and_seasonal_subseries"
+
+    def test_pick_components_correct_has_seasonal(self):
+        step4 = next(s for s in SEASONAL_LESSON.workflow_steps if s.id == "pick_components")
+        assert step4.challenge.correct == {"level": False, "slope": False, "seasonal": True}
+
+    def test_specify_asks_period(self):
+        step5 = next(s for s in SEASONAL_LESSON.workflow_steps if s.id == "specify")
+        assert step5.challenge is not None
+        assert step5.challenge.kind == "multiple_choice"
+        # Correct must be string (period label)
+        assert step5.challenge.correct in {"2", "4", "7", "12"}
