@@ -38,45 +38,36 @@ _PARAMS = [
 ]
 
 
+_PICK_COMPONENTS_Q = ChallengeQuestion(
+    kind="component_toggle",
+    correct={"level": True, "slope": False, "seasonal": False},
+    feedback_correct=(
+        "Right. A local level is the simplest DLM: only an "
+        "unobserved level that drifts, plus observation noise."
+    ),
+    feedback_incorrect=(
+        "Not quite. Look at the ACF — a slow monotone decay "
+        "without a spike is the local-level signature. No slope, "
+        "no seasonal."
+    ),
+)
+
+_SPECIFY_Q = ChallengeQuestion(
+    kind="numeric_range",
+    # Order-of-magnitude match for W_level (accept within factor of 3x)
+    correct=(0.001, 0.5),
+    feedback_correct="Good — within the expected order of magnitude.",
+    feedback_incorrect=(
+        "Check the series variability. W controls how quickly the "
+        "level drifts; larger W means the level changes more per step."
+    ),
+)
+
+
 def _attach_challenges(steps: list[WorkflowStep]) -> list[WorkflowStep]:
     """Add challenge questions to steps 4 and 5 for Challenge mode."""
-    out: list[WorkflowStep] = []
-    for s in steps:
-        if s.id == "pick_components":
-            s = WorkflowStep(
-                id=s.id, title=s.title, prompt_md=s.prompt_md,
-                plot_fn=s.plot_fn, hints=s.hints,
-                challenge=ChallengeQuestion(
-                    kind="component_toggle",
-                    correct={"level": True, "slope": False, "seasonal": False},
-                    feedback_correct=(
-                        "Right. A local level is the simplest DLM: only an "
-                        "unobserved level that drifts, plus observation noise."
-                    ),
-                    feedback_incorrect=(
-                        "Not quite. Look at the ACF — a slow monotone decay "
-                        "without a spike is the local-level signature. No slope, "
-                        "no seasonal."
-                    ),
-                ),
-            )
-        elif s.id == "specify":
-            s = WorkflowStep(
-                id=s.id, title=s.title, prompt_md=s.prompt_md,
-                plot_fn=s.plot_fn, hints=s.hints,
-                challenge=ChallengeQuestion(
-                    kind="numeric_range",
-                    # Order-of-magnitude match for W_level (accept within factor of 3x)
-                    correct=(0.001, 0.5),
-                    feedback_correct="Good — within the expected order of magnitude.",
-                    feedback_incorrect=(
-                        "Check the series variability. W controls how quickly the "
-                        "level drifts; larger W means the level changes more per step."
-                    ),
-                ),
-            )
-        out.append(s)
-    return out
+    grafts = {"pick_components": _PICK_COMPONENTS_Q, "specify": _SPECIFY_Q}
+    return [s.with_challenge(grafts[s.id]) if s.id in grafts else s for s in steps]
 
 
 LESSON = Lesson(

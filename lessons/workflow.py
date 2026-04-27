@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from typing import Any, Literal
 
 from engine.models import DLMSpec
@@ -75,6 +75,10 @@ class WorkflowStep:
     plot_fn: str
     hints: list[str] = field(default_factory=list)
     challenge: ChallengeQuestion | None = None
+
+    def with_challenge(self, challenge: ChallengeQuestion) -> WorkflowStep:
+        """Return a copy of this step with `challenge` attached."""
+        return replace(self, challenge=challenge)
 
 
 @dataclass(frozen=True)

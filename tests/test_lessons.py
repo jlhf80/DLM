@@ -93,6 +93,22 @@ class TestWorkflowStepAndLesson:
         assert isinstance(spec, DLMSpec)
 
 
+class TestWorkflowStepWithChallenge:
+    def test_with_challenge_returns_new_step_carrying_question(self):
+        step = WorkflowStep(
+            id="x", title="X", prompt_md="", plot_fn="time_series",
+        )
+        q = ChallengeQuestion(
+            kind="multiple_choice", correct="a",
+            feedback_correct="", feedback_incorrect="",
+        )
+        new = step.with_challenge(q)
+        assert new is not step
+        assert new.challenge is q
+        assert step.challenge is None
+        assert new.id == step.id and new.plot_fn == step.plot_fn
+
+
 class TestCanonicalWorkflow:
     def test_nine_step_ids(self):
         assert canonical_step_ids() == [
