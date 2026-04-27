@@ -1,6 +1,5 @@
 """Tests for lesson content types and lesson content integrity."""
 
-import numpy as np
 import pytest
 
 from engine.models import DLMSpec, make_local_level
@@ -9,7 +8,6 @@ from lessons.workflow import (
     Lesson,
     ParamSpec,
     WorkflowStep,
-    validate_lesson,
 )
 
 
