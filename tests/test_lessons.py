@@ -4,6 +4,7 @@ import pytest
 
 from engine.models import DLMSpec, make_local_level
 from lessons.local_level import LESSON as LOCAL_LEVEL_LESSON
+from lessons.local_linear_trend import LESSON as LLT_LESSON
 from lessons.workflow import (
     ChallengeQuestion,
     Lesson,
@@ -156,3 +157,18 @@ class TestLocalLevelLesson:
         step5 = next(s for s in LOCAL_LEVEL_LESSON.workflow_steps if s.id == "specify")
         assert step5.challenge is not None
         assert step5.challenge.kind == "numeric_range"
+
+
+class TestLocalLinearTrendLesson:
+    def test_builds_valid_spec_on_defaults(self):
+        params = {p.name: p.default for p in LLT_LESSON.param_schema}
+        spec = LLT_LESSON.model_builder(params)
+        assert spec.d == 2 and spec.p == 1
+
+    def test_pick_components_correct_has_slope(self):
+        step4 = next(s for s in LLT_LESSON.workflow_steps if s.id == "pick_components")
+        assert step4.challenge.correct == {"level": True, "slope": True, "seasonal": False}
+
+    def test_param_schema_has_slope(self):
+        names = [p.name for p in LLT_LESSON.param_schema]
+        assert "W_slope" in names
