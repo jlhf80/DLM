@@ -3,6 +3,7 @@
 import pytest
 
 from engine.models import DLMSpec, make_local_level
+from lessons.local_level import LESSON as LOCAL_LEVEL_LESSON
 from lessons.workflow import (
     ChallengeQuestion,
     Lesson,
@@ -118,3 +119,24 @@ class TestCanonicalWorkflow:
         quant_yes = next(s for s in yes if s.id == "quantify")
         assert quant_no.plot_fn == "acf_pacf"
         assert quant_yes.plot_fn == "acf_pacf_and_seasonal_subseries"
+
+
+class TestLocalLevelLesson:
+    def test_builds_valid_spec_on_defaults(self):
+        params = {p.name: p.default for p in LOCAL_LEVEL_LESSON.param_schema}
+        spec = LOCAL_LEVEL_LESSON.model_builder(params)
+        assert spec.d == 1 and spec.p == 1
+
+    def test_has_nine_steps(self):
+        assert len(LOCAL_LEVEL_LESSON.workflow_steps) == 9
+
+    def test_pick_components_question_is_toggle(self):
+        step4 = next(s for s in LOCAL_LEVEL_LESSON.workflow_steps if s.id == "pick_components")
+        assert step4.challenge is not None
+        assert step4.challenge.kind == "component_toggle"
+        assert step4.challenge.correct == {"level": True, "slope": False, "seasonal": False}
+
+    def test_specify_variance_order_of_magnitude(self):
+        step5 = next(s for s in LOCAL_LEVEL_LESSON.workflow_steps if s.id == "specify")
+        assert step5.challenge is not None
+        assert step5.challenge.kind == "numeric_range"
