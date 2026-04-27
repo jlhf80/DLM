@@ -288,6 +288,9 @@ class TestAllLessonsIntegrity:
         The actual set is declared in ui/plots.py. We hard-code it here since
         the UI layer isn't imported for this test (keeps tests runnable
         without Streamlit).
+
+        TODO(Task 27): replace with import from ui.plots once the UI's
+        plot-fn registry is testable in isolation.
         """
         allowed = {
             "time_series",
