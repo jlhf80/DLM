@@ -104,6 +104,22 @@ class Lesson:
             raise ValueError(f"Lesson {self.id!r} has duplicate step ids {step_ids}")
 
 
+def graft_challenges(
+    steps: list[WorkflowStep],
+    mapping: dict[str, ChallengeQuestion],
+) -> list[WorkflowStep]:
+    """Return a copy of `steps` with challenges attached by step id.
+
+    Steps whose `id` is not a key in `mapping` are returned unchanged.
+    Raises ValueError if `mapping` references an id not present in `steps`.
+    """
+    step_ids = {s.id for s in steps}
+    unknown = set(mapping) - step_ids
+    if unknown:
+        raise ValueError(f"graft_challenges: unknown step ids {sorted(unknown)}")
+    return [s.with_challenge(mapping[s.id]) if s.id in mapping else s for s in steps]
+
+
 def validate_lesson(lesson: Lesson, allowed_plot_fns: set[str]) -> None:
     """Validate a lesson against the set of plot function names available in the UI.
 

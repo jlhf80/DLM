@@ -11,6 +11,7 @@ from lessons.workflow import (
     ParamSpec,
     WorkflowStep,
     canonical_step_ids,
+    graft_challenges,
     make_default_workflow_steps,
 )
 
@@ -108,6 +109,30 @@ class TestWorkflowStepWithChallenge:
         assert new.challenge is q
         assert step.challenge is None
         assert new.id == step.id and new.plot_fn == step.plot_fn
+
+
+class TestGraftChallenges:
+    def test_only_targeted_steps_get_challenge(self):
+        steps = make_default_workflow_steps(has_seasonal=False)
+        q = ChallengeQuestion(
+            kind="multiple_choice", correct="a",
+            feedback_correct="", feedback_incorrect="",
+        )
+        out = graft_challenges(steps, {"specify": q})
+        targeted = next(s for s in out if s.id == "specify")
+        untouched = next(s for s in out if s.id == "fit")
+        assert targeted.challenge is q
+        assert untouched.challenge is None
+        assert len(out) == len(steps)
+
+    def test_unknown_step_id_raises(self):
+        steps = make_default_workflow_steps(has_seasonal=False)
+        q = ChallengeQuestion(
+            kind="multiple_choice", correct="a",
+            feedback_correct="", feedback_incorrect="",
+        )
+        with pytest.raises(ValueError, match="not_a_real_step"):
+            graft_challenges(steps, {"not_a_real_step": q})
 
 
 class TestCanonicalWorkflow:

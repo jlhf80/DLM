@@ -7,7 +7,7 @@ from lessons.workflow import (
     ChallengeQuestion,
     Lesson,
     ParamSpec,
-    WorkflowStep,
+    graft_challenges,
     make_default_workflow_steps,
 )
 
@@ -63,9 +63,7 @@ _SPECIFY_Q = ChallengeQuestion(
 )
 
 
-def _attach_challenges(steps: list[WorkflowStep]) -> list[WorkflowStep]:
-    grafts = {"pick_components": _PICK_COMPONENTS_Q, "specify": _SPECIFY_Q}
-    return [s.with_challenge(grafts[s.id]) if s.id in grafts else s for s in steps]
+_CHALLENGES = {"pick_components": _PICK_COMPONENTS_Q, "specify": _SPECIFY_Q}
 
 
 LESSON = Lesson(
@@ -78,5 +76,7 @@ LESSON = Lesson(
     ),
     model_builder=_build,
     param_schema=_PARAMS,
-    workflow_steps=_attach_challenges(make_default_workflow_steps(has_seasonal=False)),
+    workflow_steps=graft_challenges(
+        make_default_workflow_steps(has_seasonal=False), _CHALLENGES
+    ),
 )
