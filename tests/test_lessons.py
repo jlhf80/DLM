@@ -88,3 +88,34 @@ class TestWorkflowStepAndLesson:
             {p.name: p.default for p in lesson.param_schema}
         )
         assert isinstance(spec, DLMSpec)
+
+
+from lessons.workflow import canonical_step_ids, make_default_workflow_steps  # noqa: E402
+
+
+class TestCanonicalWorkflow:
+    def test_nine_step_ids(self):
+        assert canonical_step_ids() == [
+            "inspect_data",
+            "decompose",
+            "quantify",
+            "pick_components",
+            "specify",
+            "fit",
+            "diagnose",
+            "forecast",
+            "reveal",
+        ]
+
+    def test_default_steps_have_all_nine(self):
+        steps = make_default_workflow_steps(has_seasonal=False)
+        assert len(steps) == 9
+        assert [s.id for s in steps] == canonical_step_ids()
+
+    def test_seasonal_flag_changes_quantify_plot(self):
+        no = make_default_workflow_steps(has_seasonal=False)
+        yes = make_default_workflow_steps(has_seasonal=True)
+        quant_no = next(s for s in no if s.id == "quantify")
+        quant_yes = next(s for s in yes if s.id == "quantify")
+        assert quant_no.plot_fn == "acf_pacf"
+        assert quant_yes.plot_fn == "acf_pacf_and_seasonal_subseries"

@@ -124,3 +124,119 @@ def validate_lesson(lesson: Lesson, allowed_plot_fns: set[str]) -> None:
                 f"Lesson {lesson.id!r} step {step.id!r}: unknown plot_fn {step.plot_fn!r}; "
                 f"available: {sorted(allowed_plot_fns)}"
             )
+
+
+_CANONICAL_STEP_IDS: tuple[str, ...] = (
+    "inspect_data",
+    "decompose",
+    "quantify",
+    "pick_components",
+    "specify",
+    "fit",
+    "diagnose",
+    "forecast",
+    "reveal",
+)
+
+
+def canonical_step_ids() -> list[str]:
+    return list(_CANONICAL_STEP_IDS)
+
+
+def make_default_workflow_steps(has_seasonal: bool) -> list[WorkflowStep]:
+    """The 9-step workflow with default parameter-agnostic prompts.
+
+    Lessons customize steps 4 (pick_components), 5 (specify), and 9 (reveal)
+    by passing in `challenge` questions at construction time. The defaults
+    here are info-only (challenge=None) and serve the Lesson-mode narrative.
+    """
+    quantify_plot_fn = "acf_pacf_and_seasonal_subseries" if has_seasonal else "acf_pacf"
+    return [
+        WorkflowStep(
+            id="inspect_data",
+            title="Step 1 — Inspect the data",
+            prompt_md=(
+                "Any time series analysis starts with looking at the data. "
+                "What patterns stand out? A persistent level? A drift? "
+                "Anything periodic? Jot a mental answer before moving on."
+            ),
+            plot_fn="time_series",
+        ),
+        WorkflowStep(
+            id="decompose",
+            title="Step 2 — Decompose visually",
+            prompt_md=(
+                "Visual decomposition is the first hypothesis step. "
+                "A shaded overlay of a moving-average trend helps surface a drift "
+                "even when the noise is large. [More detail]"
+                "(/reference#baseline-procedure)."
+            ),
+            plot_fn="visual_decomposition",
+        ),
+        WorkflowStep(
+            id="quantify",
+            title="Step 3 — Quantify autocorrelation",
+            prompt_md=(
+                "The sample ACF and PACF let us *measure* what the eye suggested. "
+                "A slow ACF decay is a trend signature; a spike at lag s is seasonal. "
+                "[Reference](/reference#baseline-procedure)."
+            ),
+            plot_fn=quantify_plot_fn,
+        ),
+        WorkflowStep(
+            id="pick_components",
+            title="Step 4 — Pick components",
+            prompt_md=(
+                "Decide which DLM components you need: a level, a slope, a seasonal. "
+                "This is where your answers to steps 2 and 3 crystallize into a model."
+            ),
+            plot_fn="blank",
+        ),
+        WorkflowStep(
+            id="specify",
+            title="Step 5 — Specify the DLM",
+            prompt_md=(
+                "Write down F, G, V, W for the components you chose. "
+                "[Reference on specification](/reference#baseline-procedure)."
+            ),
+            plot_fn="spec_preview",
+        ),
+        WorkflowStep(
+            id="fit",
+            title="Step 6 — Fit (Kalman filter)",
+            prompt_md=(
+                "Run the Kalman filter. The filtered state means E[theta_t|y_{1:t}] "
+                "track the underlying components, with 95% credible bands showing the "
+                "posterior uncertainty."
+            ),
+            plot_fn="filter_state",
+        ),
+        WorkflowStep(
+            id="diagnose",
+            title="Step 7 — Diagnose (residuals + smoothing)",
+            prompt_md=(
+                "One-step forecast residuals should look like white noise. "
+                "We also compare the smoothed state (using all of y_{1:T}) against "
+                "the filtered state. [Reference on diagnostics](/reference#diagnostics)."
+            ),
+            plot_fn="diagnostics",
+        ),
+        WorkflowStep(
+            id="forecast",
+            title="Step 8 — Forecast",
+            prompt_md=(
+                "h-step-ahead forecasts with 95% credible bands. Bands widen "
+                "with horizon — that is the price of uncertainty."
+            ),
+            plot_fn="forecast",
+        ),
+        WorkflowStep(
+            id="reveal",
+            title="Step 9 — Review",
+            prompt_md=(
+                "Lesson mode: recap of the method. "
+                "Challenge mode: your fitted DLM overlaid against the ground-truth DLM."
+            ),
+            plot_fn="reveal_overlay",
+        ),
+    ]
