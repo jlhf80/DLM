@@ -244,7 +244,22 @@ def make_default_workflow_steps(has_seasonal: bool) -> list[WorkflowStep]:
             id="specify",
             title="Step 5 — Specify the DLM",
             prompt_md=(
-                "Write down F, G, V, W for the components you chose. "
+                "Now write down the DLM matrices for the components you chose:\n\n"
+                "- **F (observation matrix)** — how the state projects to the "
+                "observation: $y_t = F\\, \\theta_t + v_t$. For a level "
+                "component F picks out the level; for a seasonal factor F "
+                "picks out the current season's effect.\n"
+                "- **G (state evolution)** — how the state evolves between "
+                "steps: $\\theta_t = G\\, \\theta_{t-1} + w_t$. A pure level "
+                "uses $G = I$ (random walk); a slope adds a column that "
+                "carries the slope into the level each step.\n"
+                "- **V (observation variance)** — how noisy the measurement "
+                "$y_t$ is.\n"
+                "- **W (state innovation variance)** — how quickly each state "
+                "component drifts. Larger $W$ means faster drift: the filter "
+                "follows the data more closely but is jumpier.\n\n"
+                "The heatmaps below show the matrices the simulator built "
+                "from the sidebar parameters. "
                 "[Reference on specification](/reference#baseline-procedure)."
             ),
             plot_fn="spec_preview",
@@ -253,9 +268,9 @@ def make_default_workflow_steps(has_seasonal: bool) -> list[WorkflowStep]:
             id="fit",
             title="Step 6 — Fit (Kalman filter)",
             prompt_md=(
-                "Run the Kalman filter. The filtered state means E[theta_t|y_{1:t}] "
-                "track the underlying components, with 95% credible bands showing the "
-                "posterior uncertainty."
+                "Run the Kalman filter. The filtered state means "
+                "$E[\\theta_t \\mid y_{1:t}]$ track the underlying components, "
+                "with 95% credible bands showing the posterior uncertainty."
             ),
             plot_fn="filter_state",
         ),
@@ -264,8 +279,9 @@ def make_default_workflow_steps(has_seasonal: bool) -> list[WorkflowStep]:
             title="Step 7 — Diagnose (residuals + smoothing)",
             prompt_md=(
                 "One-step forecast residuals should look like white noise. "
-                "We also compare the smoothed state (using all of y_{1:T}) against "
-                "the filtered state. [Reference on diagnostics](/reference#diagnostics)."
+                "We also compare the smoothed state (using all of "
+                "$y_{1:T}$) against the filtered state. "
+                "[Reference on diagnostics](/reference#diagnostics)."
             ),
             plot_fn="diagnostics",
         ),

@@ -117,22 +117,40 @@ def acf_pacf_and_seasonal_subseries(
 
 
 def spec_preview(spec: DLMSpec | None, **_: Any) -> go.Figure:
-    """Render the matrices F, G, V, W as a heatmap grid."""
+    """Render the matrices F, G, V, W as annotated heatmaps.
+
+    Values are overlaid as text so 1x1 matrices (common for univariate models)
+    show their value clearly even when the colorscale collapses.
+    """
     if spec is None:
         return _blank()
     fig = make_subplots(
-        rows=2, cols=2, subplot_titles=("F", "G", "V", "W"),
+        rows=2, cols=2,
+        subplot_titles=(
+            f"F  (shape {spec.F.shape})",
+            f"G  (shape {spec.G.shape})",
+            f"V  (shape {spec.V.shape})",
+            f"W  (shape {spec.W.shape})",
+        ),
     )
     for (r, c, M, name) in [
         (1, 1, spec.F, "F"), (1, 2, spec.G, "G"),
         (2, 1, spec.V, "V"), (2, 2, spec.W, "W"),
     ]:
+        text = [[f"{v:.4g}" for v in row] for row in M]
         fig.add_trace(
-            go.Heatmap(z=M, colorscale="Greys", showscale=False,
-                       hovertemplate=f"{name}"
-                                     "[%{y}, %{x}] = %{z:.4g}<extra></extra>"),
+            go.Heatmap(
+                z=M, text=text, texttemplate="%{text}",
+                textfont=dict(size=14),
+                colorscale="Greys", showscale=False,
+                xgap=2, ygap=2,
+                hovertemplate=f"{name}"
+                              "[%{y}, %{x}] = %{z:.4g}<extra></extra>",
+            ),
             row=r, col=c,
         )
+    # Display matrices with row 0 at top (standard matrix layout).
+    fig.update_yaxes(autorange="reversed")
     fig.update_layout(height=500)
     return fig
 

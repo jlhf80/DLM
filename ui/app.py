@@ -28,8 +28,10 @@ from ui.controls import (  # noqa: E402
 from ui.plots import PLOT_FN_REGISTRY  # noqa: E402
 from ui.state import (  # noqa: E402
     init_state,
+    is_lesson_fully_completed,
     is_lesson_unlocked,
-    mark_lesson_completed,
+    lesson_modes_completed,
+    mark_lesson_mode_completed,
     reset_lesson_state,
 )
 from ui.workflow_render import render_workflow_step  # noqa: E402
@@ -52,22 +54,32 @@ def _validate_lessons_once() -> None:
 def _render_home() -> None:
     st.title("DLM Intuition Tutorial — Beginner tier")
     st.markdown(
-        "Pick a lesson. Lessons unlock in order — complete Challenge mode to "
-        "unlock the next. Completed lessons remain revisitable in this session."
+        "Pick a lesson. Lessons unlock in order — finish **both Lesson and "
+        "Challenge mode** for a lesson to unlock the next one. Completed "
+        "lessons remain revisitable in this session."
     )
     ordered_ids = [lesson.id for lesson in ALL_LESSONS]
-    completed = st.session_state.get("completed_lessons") or set()
     for lesson in ALL_LESSONS:
         unlocked = is_lesson_unlocked(lesson.id, ordered_ids)
-        is_done = lesson.id in completed
-        badge = (
-            "✅ completed" if is_done
-            else ("🔓 available" if unlocked else "🔒 locked")
+        modes = lesson_modes_completed(lesson.id)
+        fully_done = is_lesson_fully_completed(lesson.id)
+        if fully_done:
+            status = "✅ completed"
+        elif unlocked:
+            status = "🔓 available"
+        else:
+            status = "🔒 locked"
+        lesson_tick = "✅" if "lesson" in modes else "◻"
+        challenge_tick = "✅" if "challenge" in modes else "◻"
+        progress = (
+            f"{lesson_tick} Lesson mode &nbsp;·&nbsp; "
+            f"{challenge_tick} Challenge mode"
         )
         col_a, col_b = st.columns([3, 1])
         with col_a:
-            st.subheader(f"{lesson.title}  — {badge}")
+            st.subheader(f"{lesson.title}  — {status}")
             st.markdown(lesson.description)
+            st.markdown(progress, unsafe_allow_html=True)
         with col_b:
             if unlocked and st.button("Open", key=f"open_{lesson.id}"):
                 st.session_state["lesson_id"] = lesson.id
@@ -120,8 +132,7 @@ def _render_lesson_page(lesson_id: str) -> None:
                 st.session_state["step_idx"] = step_idx + 1
                 st.rerun()
         elif st.button("Finish lesson"):
-            if mode == "challenge":
-                mark_lesson_completed(lesson.id)
+            mark_lesson_mode_completed(lesson.id, mode)
             st.session_state["lesson_id"] = None
             reset_lesson_state()
             st.rerun()
