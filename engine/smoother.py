@@ -13,8 +13,10 @@ See West & Harrison chapter 4.8 and Petris chapter 2.4.3.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 from engine.filter import FilterResult, _solve_psd, _symmetrize
 from engine.models import DLMSpec
@@ -30,8 +32,8 @@ class SmoothResult:
     S : (T, d, d) smoothed state covariances
     """
 
-    s: np.ndarray
-    S: np.ndarray
+    s: NDArray[Any]
+    S: NDArray[Any]
 
 
 def rts_smoother(spec: DLMSpec, fr: FilterResult) -> SmoothResult:

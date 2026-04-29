@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 
 from engine.models import DLMSpec
 
@@ -21,8 +23,8 @@ class SimulatedSeries:
     seed : int — RNG seed used
     """
 
-    y: np.ndarray
-    theta_true: np.ndarray
+    y: NDArray[Any]
+    theta_true: NDArray[Any]
     spec: DLMSpec
     seed: int
 

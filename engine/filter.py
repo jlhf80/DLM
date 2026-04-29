@@ -19,8 +19,10 @@ from __future__ import annotations
 
 import warnings
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.linalg import LinAlgError, cho_factor, cho_solve  # type: ignore[import-untyped]
 
 from engine.models import DLMSpec
@@ -42,21 +44,21 @@ class FilterResult:
     loglik : total log-marginal-likelihood sum_t log p(y_t | y_{1:t-1})
     """
 
-    m: np.ndarray
-    C: np.ndarray
-    a: np.ndarray
-    R: np.ndarray
-    f: np.ndarray
-    Q: np.ndarray
-    e: np.ndarray
+    m: NDArray[Any]
+    C: NDArray[Any]
+    a: NDArray[Any]
+    R: NDArray[Any]
+    f: NDArray[Any]
+    Q: NDArray[Any]
+    e: NDArray[Any]
     loglik: float
 
 
-def _symmetrize(M: np.ndarray) -> np.ndarray:
+def _symmetrize(M: NDArray[Any]) -> NDArray[Any]:
     return np.asarray(0.5 * (M + M.T))
 
 
-def _solve_psd(Q: np.ndarray, B: np.ndarray) -> np.ndarray:
+def _solve_psd(Q: NDArray[Any], B: NDArray[Any]) -> NDArray[Any]:
     """Solve Q X = B for X using Cholesky; fall back to pinv if singular."""
     try:
         c, low = cho_factor(Q, lower=True)
@@ -66,7 +68,7 @@ def _solve_psd(Q: np.ndarray, B: np.ndarray) -> np.ndarray:
         return np.asarray(np.linalg.pinv(Q) @ B)
 
 
-def _logdet_psd(Q: np.ndarray) -> float:
+def _logdet_psd(Q: NDArray[Any]) -> float:
     """log|Q| for symmetric PSD Q via Cholesky (or pinv fallback)."""
     try:
         c, _ = cho_factor(Q, lower=True)
@@ -76,7 +78,7 @@ def _logdet_psd(Q: np.ndarray) -> float:
         return float(logabsdet)
 
 
-def kalman_filter(spec: DLMSpec, y: np.ndarray) -> FilterResult:
+def kalman_filter(spec: DLMSpec, y: NDArray[Any]) -> FilterResult:
     """Run the Kalman filter on observations `y` using `spec`.
 
     `y` has shape (T, p). Returns a FilterResult.

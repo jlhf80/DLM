@@ -15,8 +15,10 @@ where z = Phi^{-1}(1 - alpha/2).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.stats import norm  # type: ignore[import-untyped]
 
 from engine.filter import FilterResult, _symmetrize
@@ -36,9 +38,9 @@ class Forecast:
     """
 
     horizon: int
-    means: np.ndarray
-    lower: np.ndarray
-    upper: np.ndarray
+    means: NDArray[Any]
+    lower: NDArray[Any]
+    upper: NDArray[Any]
 
 
 def forecast_horizon(

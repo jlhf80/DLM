@@ -9,8 +9,10 @@ pure NumPy.
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 from statsmodels.stats.diagnostic import acorr_ljungbox
 from statsmodels.tsa.stattools import acf as _acf
 from statsmodels.tsa.stattools import pacf as _pacf
@@ -20,9 +22,9 @@ from statsmodels.tsa.stattools import pacf as _pacf
 class AcfPacfResult:
     """ACF and PACF values at lags 0..nlags."""
 
-    lags: np.ndarray   # (nlags+1,)
-    acf: np.ndarray    # (nlags+1,)
-    pacf: np.ndarray   # (nlags+1,)
+    lags: NDArray[Any]   # (nlags+1,)
+    acf: NDArray[Any]    # (nlags+1,)
+    pacf: NDArray[Any]   # (nlags+1,)
 
 
 @dataclass(frozen=True)
@@ -38,12 +40,12 @@ class ResidualDiagnostics:
     ljung_box_pvalue : float — portmanteau p-value (null: white noise)
     """
 
-    standardized: np.ndarray
+    standardized: NDArray[Any]
     acf_pacf: AcfPacfResult
     ljung_box_pvalue: float
 
 
-def acf_pacf(y: np.ndarray, nlags: int = 20) -> AcfPacfResult:
+def acf_pacf(y: NDArray[Any], nlags: int = 20) -> AcfPacfResult:
     """Compute ACF and PACF for a univariate series of shape (T, 1) or (T,)."""
     arr = np.asarray(y)
     if arr.ndim == 2:
@@ -64,8 +66,8 @@ def acf_pacf(y: np.ndarray, nlags: int = 20) -> AcfPacfResult:
 
 
 def residual_diagnostics(
-    e: np.ndarray,
-    Q: np.ndarray,
+    e: NDArray[Any],
+    Q: NDArray[Any],
     nlags: int = 20,
 ) -> ResidualDiagnostics:
     """Diagnostics for innovations `e` with predictive covariances `Q`.

@@ -17,15 +17,17 @@ with y_t in R^p, theta_t in R^d, F_t (p, d), G_t (d, d), V_t (p, p), W_t (d, d).
 from __future__ import annotations
 
 from dataclasses import dataclass
+from typing import Any
 
 import numpy as np
+from numpy.typing import NDArray
 from scipy.linalg import block_diag as _block_diag  # type: ignore[import-untyped]
 
 _TOL = 1e-8
 _DIAG_MIN = 1e-12
 
 
-def _check_psd_symmetric(M: np.ndarray, name: str) -> None:
+def _check_psd_symmetric(M: NDArray[Any], name: str) -> None:
     if M.ndim != 2 or M.shape[0] != M.shape[1]:
         raise ValueError(f"{name} must be a square 2D array, got shape {M.shape}")
     if not np.allclose(M, M.T, atol=_TOL):
@@ -52,12 +54,12 @@ class DLMSpec:
     C0 : (d, d) ndarray — prior state covariance
     """
 
-    F: np.ndarray
-    G: np.ndarray
-    V: np.ndarray
-    W: np.ndarray
-    m0: np.ndarray
-    C0: np.ndarray
+    F: NDArray[Any]
+    G: NDArray[Any]
+    V: NDArray[Any]
+    W: NDArray[Any]
+    m0: NDArray[Any]
+    C0: NDArray[Any]
 
     def __post_init__(self) -> None:
         # Pull shapes from F (source of truth for p and d).
@@ -131,8 +133,8 @@ def make_local_linear_trend(
     V: float,
     W_level: float,
     W_slope: float,
-    m0: np.ndarray | None = None,
-    C0: np.ndarray | None = None,
+    m0: NDArray[Any] | None = None,
+    C0: NDArray[Any] | None = None,
 ) -> DLMSpec:
     """Local-linear-trend DLM (level + slope).
 
@@ -165,8 +167,8 @@ def make_seasonal_factor(
     period: int,
     V: float,
     W_season: float,
-    m0: np.ndarray | None = None,
-    C0: np.ndarray | None = None,
+    m0: NDArray[Any] | None = None,
+    C0: NDArray[Any] | None = None,
 ) -> DLMSpec:
     """Seasonal DLM in factor form with sum-to-zero constraint.
 
