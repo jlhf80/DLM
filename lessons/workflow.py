@@ -43,12 +43,22 @@ class ChallengeQuestion:
     depends on the user's current parameter settings (e.g. the seasonal
     period). The static value is validated at construction; the callable's
     return value is validated lazily by `resolve()`.
+
+    `question` is the prompt label rendered above the widget; if empty
+    the renderer falls back to a generic label.
+
+    `input_default` is the initial widget value for `numeric_range`
+    questions — gives the user a sensible starting point for "what
+    order of magnitude do you expect?" estimates. Ignored for other
+    kinds.
     """
 
     kind: ChallengeKind
     correct: Any
     feedback_correct: str
     feedback_incorrect: str
+    question: str = ""
+    input_default: float | None = None
 
     def __post_init__(self) -> None:
         if self.kind not in ("multiple_choice", "numeric_range", "component_toggle"):

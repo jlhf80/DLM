@@ -47,6 +47,7 @@ _PICK_COMPONENTS_Q = ChallengeQuestion(
         "level, or does it keep moving? If it keeps moving, you need "
         "a slope component."
     ),
+    question="Which components does this series need?",
 )
 
 _SPECIFY_Q = ChallengeQuestion(
@@ -60,6 +61,13 @@ _SPECIFY_Q = ChallengeQuestion(
         "W_slope should be orders of magnitude smaller than W_level. "
         "Too large and the forecast will be wildly unstable."
     ),
+    question=(
+        "Order-of-magnitude guess for **W_slope** (slope innovation "
+        "variance). F and G are pinned for a level+slope model; V and "
+        "W_level come from the sidebar. Slopes usually drift much more "
+        "slowly than levels — pick accordingly."
+    ),
+    input_default=0.001,
 )
 
 

@@ -100,6 +100,8 @@ def _render_challenge_widget(
     key = f"answer_{step.id}"
     prior = st.session_state["answers"].get(step.id)
     answer: Any
+    if challenge.question:
+        st.markdown(f"**{challenge.question}**")
     if challenge.kind == "component_toggle":
         cols = st.columns(3)
         level = cols[0].checkbox("level",
@@ -113,10 +115,16 @@ def _render_challenge_widget(
                                     key=f"{key}_seasonal")
         answer = {"level": level, "slope": slope, "seasonal": seasonal}
     elif challenge.kind == "numeric_range":
+        if prior is not None:
+            initial = float(prior)
+        elif challenge.input_default is not None:
+            initial = float(challenge.input_default)
+        else:
+            initial = 0.1
         answer = st.number_input(
-            "Your estimate", min_value=0.0, max_value=10.0,
-            value=float(prior) if prior is not None else 0.1,
-            step=0.001, format="%.4f", key=key,
+            "Your estimate",
+            min_value=0.0, max_value=10.0,
+            value=initial, step=0.001, format="%.4f", key=key,
         )
     elif challenge.kind == "multiple_choice":
         options = ["2", "4", "7", "12"]

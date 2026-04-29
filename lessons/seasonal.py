@@ -46,6 +46,7 @@ _PICK_COMPONENTS_Q = ChallengeQuestion(
         "Look at the ACF spikes. Non-decaying peaks at multiples of "
         "a fixed lag are the seasonal signature."
     ),
+    question="Which components does this series need?",
 )
 
 _SPECIFY_Q = ChallengeQuestion(
@@ -57,6 +58,10 @@ _SPECIFY_Q = ChallengeQuestion(
     feedback_incorrect=(
         "The period is the lag at which the ACF first shows a large "
         "non-decaying spike. Try matching that to one of the options."
+    ),
+    question=(
+        "Pick the seasonal **period** — the smallest lag at which the "
+        "ACF shows a strong non-decaying spike."
     ),
 )
 

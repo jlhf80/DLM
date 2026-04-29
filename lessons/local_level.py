@@ -50,17 +50,25 @@ _PICK_COMPONENTS_Q = ChallengeQuestion(
         "without a spike is the local-level signature. No slope, "
         "no seasonal."
     ),
+    question="Which components does this series need?",
 )
 
 _SPECIFY_Q = ChallengeQuestion(
     kind="numeric_range",
-    # Order-of-magnitude match for W_level (accept within factor of 3x)
+    # Order-of-magnitude match for W (level innovation variance).
     correct=(0.001, 0.5),
     feedback_correct="Good — within the expected order of magnitude.",
     feedback_incorrect=(
         "Check the series variability. W controls how quickly the "
         "level drifts; larger W means the level changes more per step."
     ),
+    question=(
+        "Order-of-magnitude guess for **W** (level innovation variance). "
+        "F = 1 and G = 1 are pinned for a local level, and V is set by "
+        "the sidebar — only W is up to you here. Aim for the right power "
+        "of ten."
+    ),
+    input_default=0.05,
 )
 
 
