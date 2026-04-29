@@ -235,10 +235,12 @@ def make_default_workflow_steps(has_seasonal: bool) -> list[WorkflowStep]:
             id="pick_components",
             title="Step 4 — Pick components",
             prompt_md=(
-                "Decide which DLM components you need: a level, a slope, a seasonal. "
-                "This is where your answers to steps 2 and 3 crystallize into a model."
+                "Decide which DLM components you need: a level, a slope, a "
+                "seasonal. This is where your answers to steps 2 and 3 "
+                "crystallize into a model — keep the visual decomposition in "
+                "view while you choose."
             ),
-            plot_fn="blank",
+            plot_fn="visual_decomposition",
         ),
         WorkflowStep(
             id="specify",

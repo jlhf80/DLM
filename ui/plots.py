@@ -117,41 +117,48 @@ def acf_pacf_and_seasonal_subseries(
 
 
 def spec_preview(spec: DLMSpec | None, **_: Any) -> go.Figure:
-    """Render the matrices F, G, V, W as annotated heatmaps.
+    """Render the matrices F, G, V, W as Plotly tables.
 
-    Values are overlaid as text so 1x1 matrices (common for univariate models)
-    show their value clearly even when the colorscale collapses.
+    Tables render reliably for any matrix shape, including the 1x1
+    matrices common for univariate models, where heatmap colorscales
+    collapse to a single uniform cell.
     """
     if spec is None:
         return _blank()
+    specs = [
+        (1, 1, spec.F, "F  (observation)"),
+        (1, 2, spec.G, "G  (state evolution)"),
+        (2, 1, spec.V, "V  (obs variance)"),
+        (2, 2, spec.W, "W  (state innovation variance)"),
+    ]
     fig = make_subplots(
         rows=2, cols=2,
-        subplot_titles=(
-            f"F  (shape {spec.F.shape})",
-            f"G  (shape {spec.G.shape})",
-            f"V  (shape {spec.V.shape})",
-            f"W  (shape {spec.W.shape})",
-        ),
+        specs=[[{"type": "table"}, {"type": "table"}],
+               [{"type": "table"}, {"type": "table"}]],
+        subplot_titles=tuple(f"{name}  shape {M.shape}"
+                             for (_, _, M, name) in specs),
+        vertical_spacing=0.18, horizontal_spacing=0.08,
     )
-    for (r, c, M, name) in [
-        (1, 1, spec.F, "F"), (1, 2, spec.G, "G"),
-        (2, 1, spec.V, "V"), (2, 2, spec.W, "W"),
-    ]:
-        text = [[f"{v:.4g}" for v in row] for row in M]
+    for (r, c, M, _) in specs:
+        n_cols = M.shape[1]
+        header = [f"col {j}" for j in range(n_cols)]
+        cells = [[f"{M[i, j]:.4g}" for i in range(M.shape[0])]
+                 for j in range(n_cols)]
         fig.add_trace(
-            go.Heatmap(
-                z=M, text=text, texttemplate="%{text}",
-                textfont=dict(size=14),
-                colorscale="Greys", showscale=False,
-                xgap=2, ygap=2,
-                hovertemplate=f"{name}"
-                              "[%{y}, %{x}] = %{z:.4g}<extra></extra>",
+            go.Table(
+                header=dict(values=header,
+                            fill_color="#f0f2f6",
+                            font=dict(size=12),
+                            align="center"),
+                cells=dict(values=cells,
+                           fill_color="white",
+                           font=dict(size=14),
+                           align="center",
+                           height=28),
             ),
             row=r, col=c,
         )
-    # Display matrices with row 0 at top (standard matrix layout).
-    fig.update_yaxes(autorange="reversed")
-    fig.update_layout(height=500)
+    fig.update_layout(height=500, margin=dict(t=60, b=20, l=10, r=10))
     return fig
 
 
