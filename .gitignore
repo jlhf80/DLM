@@ -23,3 +23,6 @@ build/
 
 # Jupyter (future notebook variant)
 .ipynb_checkpoints/
+
+# Reference textbooks (copyrighted; keep local-only)
+*.pdf
