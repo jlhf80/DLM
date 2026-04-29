@@ -6,21 +6,33 @@ Run with:
 
 from __future__ import annotations
 
+import sys
 from pathlib import Path
 
-import streamlit as st
+# Streamlit puts ui/ on sys.path, not the project root. Make sibling packages
+# (engine, lessons, ui) importable when invoked via `streamlit run ui/app.py`
+# regardless of whether the project is pip-installed in the active Python.
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent
+if str(_PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(_PROJECT_ROOT))
 
-from lessons import ALL_LESSONS, get_lesson
-from lessons.workflow import validate_lesson
-from ui.controls import render_mode_selector, render_sidebar, simulate_from_params
-from ui.plots import PLOT_FN_REGISTRY
-from ui.state import (
+import streamlit as st  # noqa: E402
+
+from lessons import ALL_LESSONS, get_lesson  # noqa: E402
+from lessons.workflow import validate_lesson  # noqa: E402
+from ui.controls import (  # noqa: E402
+    render_mode_selector,
+    render_sidebar,
+    simulate_from_params,
+)
+from ui.plots import PLOT_FN_REGISTRY  # noqa: E402
+from ui.state import (  # noqa: E402
     init_state,
     is_lesson_unlocked,
     mark_lesson_completed,
     reset_lesson_state,
 )
-from ui.workflow_render import render_workflow_step
+from ui.workflow_render import render_workflow_step  # noqa: E402
 
 CONTENT_DIR = Path(__file__).resolve().parent.parent / "content"
 
