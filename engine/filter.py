@@ -145,3 +145,144 @@ def kalman_filter(spec: DLMSpec, y: NDArray[Any]) -> FilterResult:
         m_prev, C_prev = m_t, C_t
 
     return FilterResult(m=m, C=C, a=a, R=R, f=f, Q=Q, e=e, loglik=loglik)
+
+
+def kalman_filter_discount(
+    spec: DLMSpec,
+    y: NDArray[Any],
+    delta: float,
+) -> FilterResult:
+    """Kalman filter with discount-factor variance specification (W&H ch. 6).
+
+    Replaces W with a state-dependent quantity so that the prior covariance
+    is inflated by 1/delta each step:
+
+        R_t = G C_{t-1} G' / delta
+
+    `spec.W` is ignored. delta = 1 recovers R_t = G C_{t-1} G' (no noise).
+    """
+    if not (0.0 < delta <= 1.0):
+        raise ValueError(f"delta must be in (0, 1], got {delta}")
+    if y.ndim != 2:
+        raise ValueError(f"y must be 2D (T, p), got shape {y.shape}")
+    T, p = y.shape
+    if T < 1:
+        raise ValueError("y must have at least one observation")
+    if p != spec.p:
+        raise ValueError(f"y observation dimension {p} does not match spec.p {spec.p}")
+
+    d = spec.d
+    F, G, V = spec.F, spec.G, spec.V
+    m_prev = spec.m0
+    C_prev = spec.C0
+
+    m = np.empty((T, d))
+    C = np.empty((T, d, d))
+    a = np.empty((T, d))
+    R = np.empty((T, d, d))
+    f = np.empty((T, p))
+    Q = np.empty((T, p, p))
+    e = np.empty((T, p))
+    loglik = 0.0
+    log2pi = float(np.log(2.0 * np.pi))
+
+    for t in range(T):
+        a_t = G @ m_prev
+        R_t = _symmetrize(G @ C_prev @ G.T / delta)   # discount replaces +W
+
+        f_t = F @ a_t
+        Q_t = _symmetrize(F @ R_t @ F.T + V)
+        e_t = y[t] - f_t
+
+        FRt = F @ R_t
+        A_t = _solve_psd(Q_t, FRt).T
+
+        m_t = a_t + A_t @ e_t
+        Id = np.eye(d)
+        IAF = Id - A_t @ F
+        C_t = _symmetrize(IAF @ R_t @ IAF.T + A_t @ V @ A_t.T)
+
+        logdet_Q = _logdet_psd(Q_t)
+        quad = float(e_t @ _solve_psd(Q_t, e_t))
+        loglik += -0.5 * (p * log2pi + logdet_Q + quad)
+
+        m[t], C[t] = m_t, C_t
+        a[t], R[t] = a_t, R_t
+        f[t], Q[t] = f_t, Q_t
+        e[t] = e_t
+        m_prev, C_prev = m_t, C_t
+
+    return FilterResult(m=m, C=C, a=a, R=R, f=f, Q=Q, e=e, loglik=loglik)
+
+
+def kalman_filter_tv(
+    F_seq: NDArray[Any],
+    G: NDArray[Any],
+    V: NDArray[Any],
+    W: NDArray[Any],
+    m0: NDArray[Any],
+    C0: NDArray[Any],
+    y: NDArray[Any],
+) -> FilterResult:
+    """Kalman filter with a time-varying observation matrix F_t.
+
+    Parameters
+    ----------
+    F_seq : (T, p, d) array of observation matrices, one per time step.
+    G, V, W, m0, C0 : constant system matrices (same semantics as DLMSpec).
+    y : (T, p) observations.
+    """
+    if y.ndim != 2:
+        raise ValueError(f"y must be 2D (T, p), got shape {y.shape}")
+    T, p = y.shape
+    if T < 1:
+        raise ValueError("y must have at least one observation")
+    if F_seq.shape != (T, p, G.shape[0]):
+        raise ValueError(
+            f"F_seq must have shape (T={T}, p={p}, d={G.shape[0]}), "
+            f"got {F_seq.shape}"
+        )
+
+    d = G.shape[0]
+    m_prev = m0
+    C_prev = C0
+
+    m = np.empty((T, d))
+    C = np.empty((T, d, d))
+    a = np.empty((T, d))
+    R = np.empty((T, d, d))
+    f = np.empty((T, p))
+    Q = np.empty((T, p, p))
+    e = np.empty((T, p))
+    loglik = 0.0
+    log2pi = float(np.log(2.0 * np.pi))
+
+    for t in range(T):
+        F = F_seq[t]   # (p, d) at this time step
+
+        a_t = G @ m_prev
+        R_t = _symmetrize(G @ C_prev @ G.T + W)
+
+        f_t = F @ a_t
+        Q_t = _symmetrize(F @ R_t @ F.T + V)
+        e_t = y[t] - f_t
+
+        FRt = F @ R_t
+        A_t = _solve_psd(Q_t, FRt).T
+
+        m_t = a_t + A_t @ e_t
+        Id = np.eye(d)
+        IAF = Id - A_t @ F
+        C_t = _symmetrize(IAF @ R_t @ IAF.T + A_t @ V @ A_t.T)
+
+        logdet_Q = _logdet_psd(Q_t)
+        quad = float(e_t @ _solve_psd(Q_t, e_t))
+        loglik += -0.5 * (p * log2pi + logdet_Q + quad)
+
+        m[t], C[t] = m_t, C_t
+        a[t], R[t] = a_t, R_t
+        f[t], Q[t] = f_t, Q_t
+        e[t] = e_t
+        m_prev, C_prev = m_t, C_t
+
+    return FilterResult(m=m, C=C, a=a, R=R, f=f, Q=Q, e=e, loglik=loglik)

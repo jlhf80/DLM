@@ -1,9 +1,10 @@
 """Core DLM data types and model builders.
 
 DLMSpec holds the constant (time-invariant) matrices F, G, V, W of a Gaussian
-DLM, plus the prior (m0, C0). All Beginner-tier lessons are time-invariant, so
-we do not support time-varying components here — that belongs in a future
-revision when the Intermediate tier is added.
+DLM, plus the prior (m0, C0).
+
+For time-varying observation matrices (dynamic regression) use DLMSpecTV;
+run through engine.filter.kalman_filter_tv.
 
 Notation follows West & Harrison, Bayesian Forecasting and Dynamic Models (2nd
 ed., 1997), chapter 4:
@@ -217,6 +218,53 @@ def make_seasonal_factor(
     )
 
 
+@dataclass(frozen=True)
+class DLMSpecTV:
+    """A DLM with a time-varying observation matrix F_t (dynamic regression).
+
+    F_seq : (T, p, d) — one observation matrix per time step.
+    G, V, W, m0, C0 : constant system matrices (same semantics as DLMSpec).
+
+    Use engine.filter.kalman_filter_tv to run the filter on this spec.
+    """
+
+    F_seq: NDArray[Any]   # (T, p, d)
+    G: NDArray[Any]        # (d, d)
+    V: NDArray[Any]        # (p, p)
+    W: NDArray[Any]        # (d, d)
+    m0: NDArray[Any]       # (d,)
+    C0: NDArray[Any]       # (d, d)
+
+    def __post_init__(self) -> None:
+        if self.F_seq.ndim != 3:
+            raise ValueError(
+                f"F_seq must be 3D (T, p, d), got shape {self.F_seq.shape}"
+            )
+        _T, p, d = self.F_seq.shape
+        if self.G.shape != (d, d):
+            raise ValueError(f"G must be ({d}, {d}), got {self.G.shape}")
+        if self.V.shape != (p, p):
+            raise ValueError(f"V must be ({p}, {p}), got {self.V.shape}")
+        if self.W.shape != (d, d):
+            raise ValueError(f"W must be ({d}, {d}), got {self.W.shape}")
+        if self.m0.shape != (d,):
+            raise ValueError(f"m0 must be ({d},), got {self.m0.shape}")
+        if self.C0.shape != (d, d):
+            raise ValueError(f"C0 must be ({d}, {d}), got {self.C0.shape}")
+
+    @property
+    def T(self) -> int:
+        return int(self.F_seq.shape[0])
+
+    @property
+    def p(self) -> int:
+        return int(self.F_seq.shape[1])
+
+    @property
+    def d(self) -> int:
+        return int(self.F_seq.shape[2])
+
+
 def combine(*specs: DLMSpec) -> DLMSpec:
     """Superpose component DLMs into a single block-diagonal DLM.
 
@@ -240,3 +288,69 @@ def combine(*specs: DLMSpec) -> DLMSpec:
     m0 = np.concatenate([s.m0 for s in specs])
     C0 = _block_diag(*[s.C0 for s in specs])
     return DLMSpec(F=F, G=G, V=V0, W=W, m0=m0, C0=C0)
+
+
+def make_fourier_seasonal(
+    period: int,
+    n_harmonics: int,
+    V: float,
+    W_season: float,
+) -> DLMSpec:
+    """Fourier-form seasonal DLM (W&H ch. 8).
+
+    Represents a seasonal pattern with ``n_harmonics`` sinusoidal components.
+    Each harmonic j = 1, ..., n_harmonics contributes a 2x2 rotation block
+    (or 1x1 at the Nyquist frequency when period is even and
+    j == period // 2).
+
+    Parameters
+    ----------
+    period      : seasonal period s (e.g. 12 for monthly, 4 for quarterly).
+    n_harmonics : number of Fourier harmonics J (1 ≤ J ≤ floor(period / 2)).
+    V           : scalar observation noise variance.
+    W_season    : innovation variance applied equally to each harmonic's
+                  first component; the second (sine) component gets a nugget.
+
+    Returns
+    -------
+    DLMSpec with d = 2*J (or 2*J-1 if the Nyquist harmonic is included).
+    """
+    if period < 2:
+        raise ValueError(f"period must be >= 2, got {period}")
+    max_harmonics = period // 2
+    if not (1 <= n_harmonics <= max_harmonics):
+        raise ValueError(
+            f"n_harmonics must be in [1, {max_harmonics}] for period={period}, "
+            f"got {n_harmonics}"
+        )
+
+    V_mat = np.array([[float(V)]])
+    _nugget = 1e-8
+
+    harmonic_specs: list[DLMSpec] = []
+    for j in range(1, n_harmonics + 1):
+        omega = 2.0 * np.pi * j / period
+        nyquist = (period % 2 == 0) and (j == period // 2)
+
+        if nyquist:
+            # Scalar harmonic at frequency pi: G_j = [[-1]]
+            F_j = np.array([[1.0]])
+            G_j = np.array([[-1.0]])
+            W_j = np.array([[float(W_season)]])
+            m0_j = np.zeros(1)
+            C0_j = 1e3 * np.eye(1)
+        else:
+            c, s = np.cos(omega), np.sin(omega)
+            F_j = np.array([[1.0, 0.0]])
+            G_j = np.array([[c, s], [-s, c]])
+            W_j = np.diag([float(W_season), _nugget])
+            m0_j = np.zeros(2)
+            C0_j = 1e3 * np.eye(2)
+
+        harmonic_specs.append(
+            DLMSpec(F=F_j, G=G_j, V=V_mat, W=W_j, m0=m0_j, C0=C0_j)
+        )
+
+    if len(harmonic_specs) == 1:
+        return harmonic_specs[0]
+    return combine(*harmonic_specs)
