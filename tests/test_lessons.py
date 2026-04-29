@@ -283,29 +283,13 @@ class TestAllLessonsIntegrity:
             assert step_ids == ids, f"Lesson {lesson.id} has {step_ids}"
 
     def test_all_plot_fns_declared(self):
-        """Every plot_fn referenced must be in the known plot-fn set.
+        """Every plot_fn referenced must be in the UI's plot-fn registry."""
+        from ui.plots import PLOT_FN_REGISTRY
 
-        The actual set is declared in ui/plots.py. We hard-code it here since
-        the UI layer isn't imported for this test (keeps tests runnable
-        without Streamlit).
-
-        TODO(Task 27): replace with import from ui.plots once the UI's
-        plot-fn registry is testable in isolation.
-        """
-        allowed = {
-            "time_series",
-            "visual_decomposition",
-            "acf_pacf",
-            "acf_pacf_and_seasonal_subseries",
-            "blank",
-            "spec_preview",
-            "filter_state",
-            "diagnostics",
-            "forecast",
-            "reveal_overlay",
-        }
+        allowed = set(PLOT_FN_REGISTRY.keys())
         for lesson in ALL_LESSONS:
             for step in lesson.workflow_steps:
                 assert step.plot_fn in allowed, (
-                    f"Lesson {lesson.id} step {step.id}: unknown plot_fn {step.plot_fn}"
+                    f"Lesson {lesson.id} step {step.id}: "
+                    f"unknown plot_fn {step.plot_fn}"
                 )

@@ -20,6 +20,7 @@ import streamlit as st  # noqa: E402
 
 from lessons import ALL_LESSONS, get_lesson  # noqa: E402
 from lessons.workflow import validate_lesson  # noqa: E402
+from ui.content_index import extract_anchors, find_missing_anchors  # noqa: E402
 from ui.controls import (  # noqa: E402
     render_mode_selector,
     render_sidebar,
@@ -42,12 +43,22 @@ st.set_page_config(page_title="DLM Tutorial — Beginner", layout="wide")
 
 
 def _validate_lessons_once() -> None:
-    """Validate lessons against the plot-fn registry at startup."""
+    """Validate lessons (plot-fns + reference anchors) at startup."""
     if "lessons_validated" in st.session_state:
         return
     allowed = set(PLOT_FN_REGISTRY.keys())
     for lesson in ALL_LESSONS:
         validate_lesson(lesson, allowed_plot_fns=allowed)
+
+    guide_path = CONTENT_DIR / "modeling-guide.md"
+    if guide_path.exists():
+        anchors = extract_anchors(guide_path.read_text(encoding="utf-8"))
+        missing = find_missing_anchors(ALL_LESSONS, available_anchors=anchors)
+        if missing:
+            raise RuntimeError(
+                "modeling-guide.md is missing anchors referenced by "
+                f"workflow steps: {missing}"
+            )
     st.session_state["lessons_validated"] = True
 
 
