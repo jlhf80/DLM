@@ -250,3 +250,59 @@ def test_multivariate_local_level_f_is_ones() -> None:
 
     spec = make_multivariate_local_level(p=4, V=1.0, W_level=0.5)
     np.testing.assert_array_equal(spec.F, np.ones((4, 1)))
+
+
+# ---------------------------------------------------------------------------
+# Interventions
+# ---------------------------------------------------------------------------
+
+
+def test_intervention_level_shift_changes_posterior() -> None:
+    from engine.interventions import Intervention, kalman_filter_interventions
+
+    spec = make_local_level(V=1.0, W_level=0.1)
+    y = simulate(spec, n=30, seed=4).y
+    iv = {15: Intervention(kind="level", delta=10.0, component=0)}
+    fr_iv = kalman_filter_interventions(spec, y, iv)
+    fr_plain = kalman_filter(spec, y)
+    # Posterior mean at t=15 shifts up by ~10
+    assert fr_iv.m[15, 0] > fr_plain.m[15, 0] + 5.0
+
+
+def test_intervention_variance_inflation() -> None:
+    """Variance-inflation intervention increases R at t+1."""
+    from engine.interventions import Intervention, kalman_filter_interventions
+
+    spec = make_local_level(V=1.0, W_level=0.1)
+    y = simulate(spec, n=30, seed=5).y
+    iv = {10: Intervention(kind="variance", scale=100.0)}
+    fr_iv = kalman_filter_interventions(spec, y, iv)
+    fr_plain = kalman_filter(spec, y)
+    # R at t=11 should be larger with variance inflation
+    assert fr_iv.R[11, 0, 0] > fr_plain.R[11, 0, 0]
+
+
+def test_intervention_outlier_downweights_obs() -> None:
+    """Outlier intervention down-weights a spike observation."""
+    from engine.interventions import Intervention, kalman_filter_interventions
+
+    spec = make_local_level(V=1.0, W_level=0.1)
+    y = simulate(spec, n=30, seed=6).y.copy()
+    y[10, 0] = 100.0  # spike
+    iv = {10: Intervention(kind="outlier", scale=1e6)}
+    fr_plain = kalman_filter(spec, y)
+    fr_iv = kalman_filter_interventions(spec, y, iv)
+    # With outlier intervention, the filter at t=11 should be less pulled toward 100
+    assert abs(fr_iv.m[11, 0]) < abs(fr_plain.m[11, 0])
+
+
+def test_intervention_returns_filter_result() -> None:
+    from engine.interventions import Intervention, kalman_filter_interventions
+
+    spec = make_local_level(V=1.0, W_level=0.5)
+    y = simulate(spec, n=20, seed=9).y
+    iv: dict[int, Intervention] = {}
+    fr = kalman_filter_interventions(spec, y, iv)
+    # Empty interventions == standard filter
+    fr_plain = kalman_filter(spec, y)
+    np.testing.assert_allclose(fr.loglik, fr_plain.loglik, atol=1e-10)
