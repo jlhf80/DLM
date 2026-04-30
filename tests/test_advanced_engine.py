@@ -306,3 +306,61 @@ def test_intervention_returns_filter_result() -> None:
     # Empty interventions == standard filter
     fr_plain = kalman_filter(spec, y)
     np.testing.assert_allclose(fr.loglik, fr_plain.loglik, atol=1e-10)
+
+
+# ---------------------------------------------------------------------------
+# Monitoring
+# ---------------------------------------------------------------------------
+
+
+def test_monitor_result_fields() -> None:
+    from engine.interventions import kalman_filter_monitor
+
+    spec = make_local_level(V=1.0, W_level=0.1)
+    y = simulate(spec, n=30, seed=20).y
+    mr = kalman_filter_monitor(spec, y, inflation=100.0, threshold=0.1)
+    assert mr.H.shape == (30,)
+    assert mr.L.shape == (30,)
+    assert mr.alert.shape == (30,)
+    assert mr.alert.dtype == bool
+    # L is cumulative product of H
+    np.testing.assert_allclose(mr.L, np.cumprod(mr.H), atol=1e-10)
+
+
+def test_monitor_alert_on_structural_break() -> None:
+    """Monitor should alert near or after a structural break in state noise."""
+    from engine.interventions import kalman_filter_monitor
+
+    spec = make_local_level(V=1.0, W_level=0.1)
+    rng = np.random.default_rng(21)
+    T = 300
+    y_arr = np.zeros((T, 1))
+    level = 0.0
+    for t in range(T):
+        w_var = 0.1 if t < 200 else 10.0  # structural break at t=200
+        level += rng.normal(scale=np.sqrt(w_var))
+        y_arr[t, 0] = level + rng.normal(scale=1.0)
+    mr = kalman_filter_monitor(spec, y_arr, inflation=100.0, threshold=0.1)
+    alert_times = np.where(mr.alert)[0]
+    assert len(alert_times) > 0
+    assert alert_times[0] >= 180  # no false alarm well before break
+
+
+def test_monitor_no_alert_on_stable_series() -> None:
+    """Well-specified stable series should produce few false alarms."""
+    from engine.interventions import kalman_filter_monitor
+
+    spec = make_local_level(V=1.0, W_level=0.1)
+    y = simulate(spec, n=200, seed=22).y
+    mr = kalman_filter_monitor(spec, y, inflation=100.0, threshold=0.1)
+    # Cumulative product resets logic means few alerts for in-model series
+    assert mr.alert.sum() < 20
+
+
+def test_monitor_l_is_cumprod_h() -> None:
+    from engine.interventions import kalman_filter_monitor
+
+    spec = make_local_level(V=1.0, W_level=0.5)
+    y = simulate(spec, n=50, seed=23).y
+    mr = kalman_filter_monitor(spec, y)
+    np.testing.assert_allclose(mr.L, np.cumprod(mr.H), atol=1e-12)
