@@ -199,3 +199,54 @@ def test_arima_dlm_filter_runs() -> None:
     y = rng.standard_normal((80, 1))
     fr = kalman_filter(spec, y)
     assert np.isfinite(fr.loglik)
+
+
+# ---------------------------------------------------------------------------
+# Multivariate local level
+# ---------------------------------------------------------------------------
+
+
+def test_multivariate_local_level_shape() -> None:
+    from engine.models import make_multivariate_local_level
+
+    spec = make_multivariate_local_level(p=3, V=[1.0, 2.0, 3.0], W_level=0.5)
+    assert spec.F.shape == (3, 1)
+    assert spec.G.shape == (1, 1)
+    assert spec.V.shape == (3, 3)
+    assert spec.W.shape == (1, 1)
+    assert spec.d == 1
+    assert spec.p == 3
+
+
+def test_multivariate_local_level_scalar_v() -> None:
+    from engine.models import make_multivariate_local_level
+
+    spec = make_multivariate_local_level(p=2, V=1.5, W_level=0.5)
+    np.testing.assert_allclose(np.diag(spec.V), [1.5, 1.5])
+
+
+def test_multivariate_local_level_list_v() -> None:
+    from engine.models import make_multivariate_local_level
+
+    spec = make_multivariate_local_level(p=2, V=[1.0, 3.0], W_level=0.5)
+    np.testing.assert_allclose(np.diag(spec.V), [1.0, 3.0])
+    # Off-diagonals zero
+    assert spec.V[0, 1] == 0.0
+
+
+def test_multivariate_local_level_filter_runs() -> None:
+    from engine.models import make_multivariate_local_level
+
+    spec = make_multivariate_local_level(p=2, V=1.0, W_level=0.5)
+    rng = np.random.default_rng(10)
+    y = rng.normal(size=(50, 2))
+    fr = kalman_filter(spec, y)
+    assert fr.m.shape == (50, 1)
+    assert np.isfinite(fr.loglik)
+
+
+def test_multivariate_local_level_f_is_ones() -> None:
+    from engine.models import make_multivariate_local_level
+
+    spec = make_multivariate_local_level(p=4, V=1.0, W_level=0.5)
+    np.testing.assert_array_equal(spec.F, np.ones((4, 1)))

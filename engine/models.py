@@ -422,3 +422,44 @@ def make_arima_dlm(
         m0=np.zeros(r),
         C0=100.0 * np.eye(r),
     )
+
+
+def make_multivariate_local_level(
+    p: int,
+    V: NDArray[Any] | list[float] | float,
+    W_level: float,
+) -> DLMSpec:
+    """Multivariate local level: p series sharing a common scalar level.
+
+    Observation equation (p-dimensional):
+        y_t = F theta_t + v_t,   F = ones((p, 1)),   v_t ~ N(0, V_obs)
+    State equation (scalar random walk):
+        theta_t = theta_{t-1} + w_t,   w_t ~ N(0, W_level)
+
+    Parameters
+    ----------
+    p : int
+        Number of observed series.
+    V : float or list[float] or (p, p) ndarray
+        Observation noise.  A scalar broadcasts to V * eye(p).
+        A length-p list becomes diag(V).
+    W_level : float
+        Variance of the scalar state random walk.
+    """
+    if isinstance(V, (int, float)):
+        V_mat = float(V) * np.eye(p)
+    elif isinstance(V, list):
+        V_mat = np.diag(np.array(V, dtype=float))
+    else:
+        V_mat = np.asarray(V, dtype=float)
+        if V_mat.shape != (p, p):
+            raise ValueError(f"V array must be ({p}, {p}), got {V_mat.shape}")
+
+    return DLMSpec(
+        F=np.ones((p, 1)),
+        G=np.array([[1.0]]),
+        V=V_mat,
+        W=np.array([[float(W_level)]]),
+        m0=np.zeros(1),
+        C0=100.0 * np.eye(1),
+    )
