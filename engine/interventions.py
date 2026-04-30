@@ -70,6 +70,8 @@ def kalman_filter_interventions(
     if y.ndim != 2:
         raise ValueError(f"y must be 2D (T, p), got {y.shape}")
     T, p = y.shape
+    if T < 1:
+        raise ValueError("y must have at least one observation")
     if p != spec.p:
         raise ValueError(f"y observation dim {p} != spec.p {spec.p}")
 
