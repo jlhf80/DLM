@@ -22,6 +22,8 @@ dev = [
     "jupyterlab>=4.0",
     "pandas>=2.0",
     "matplotlib>=3.7",
+    "pymc>=5.0",
+    "arviz>=0.17",
 ]
 
 [build-system]
