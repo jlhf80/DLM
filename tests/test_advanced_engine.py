@@ -62,3 +62,59 @@ def test_ffbs_llt() -> None:
     rng = np.random.default_rng(55)
     theta = ffbs(spec, fr, rng)
     assert theta.shape == (40, 2)
+
+
+# ---------------------------------------------------------------------------
+# Missing-data filter
+# ---------------------------------------------------------------------------
+
+
+def test_missing_filter_skips_update() -> None:
+    """When y[t] is NaN the posterior equals the prior."""
+    from engine.filter import kalman_filter_missing
+
+    spec = make_local_level(V=1.0, W_level=0.5)
+    y = simulate(spec, n=20, seed=2).y.copy()
+    y[5] = np.nan
+    fr = kalman_filter_missing(spec, y)
+    np.testing.assert_allclose(fr.m[5], fr.a[5])
+    np.testing.assert_allclose(fr.C[5], fr.R[5])
+    assert np.isnan(fr.e[5]).all()
+
+
+def test_missing_filter_loglik_finite() -> None:
+    """Missing obs contribute 0 to the log-likelihood; result is finite."""
+    from engine.filter import kalman_filter_missing
+
+    spec = make_local_level(V=1.0, W_level=0.5)
+    y = simulate(spec, n=10, seed=3).y.copy()
+    fr_full = kalman_filter(spec, y)
+    y[4] = np.nan
+    fr_miss = kalman_filter_missing(spec, y)
+    assert np.isfinite(fr_miss.loglik)
+    assert fr_miss.loglik > fr_full.loglik  # one obs dropped → fewer terms → higher (less negative) loglik
+
+
+def test_missing_filter_non_missing_steps_unchanged() -> None:
+    """Non-NaN steps match standard kalman_filter."""
+    from engine.filter import kalman_filter_missing
+
+    spec = make_local_level(V=1.0, W_level=0.5)
+    y = simulate(spec, n=15, seed=6).y.copy()
+    y[7] = np.nan
+    fr_miss = kalman_filter_missing(spec, y)
+    # Re-run standard filter up to t=6 (before missing)
+    fr_std = kalman_filter(spec, y[:7])
+    np.testing.assert_allclose(fr_miss.m[:7], fr_std.m, atol=1e-10)
+    np.testing.assert_allclose(fr_miss.C[:7], fr_std.C, atol=1e-10)
+
+
+def test_missing_filter_all_missing() -> None:
+    """All-NaN series: every step is posterior=prior; loglik=0."""
+    from engine.filter import kalman_filter_missing
+
+    spec = make_local_level(V=1.0, W_level=0.5)
+    y = np.full((10, 1), np.nan)
+    fr = kalman_filter_missing(spec, y)
+    assert fr.loglik == 0.0
+    np.testing.assert_allclose(fr.m, fr.a)
