@@ -118,3 +118,84 @@ def test_missing_filter_all_missing() -> None:
     fr = kalman_filter_missing(spec, y)
     assert fr.loglik == 0.0
     np.testing.assert_allclose(fr.m, fr.a)
+
+
+# ---------------------------------------------------------------------------
+# ARIMA DLM builder
+# ---------------------------------------------------------------------------
+
+
+def test_arima_dlm_ar1_shape() -> None:
+    from engine.models import make_arima_dlm
+
+    spec = make_arima_dlm(ar=[0.7], ma=[], sigma2=1.0)
+    assert spec.d == 1
+    assert spec.F.shape == (1, 1)
+    assert spec.G.shape == (1, 1)
+    assert spec.V.shape == (1, 1)
+    assert spec.W.shape == (1, 1)
+
+
+def test_arima_dlm_arma_shape() -> None:
+    """ARMA(2,1): r = max(2, 1+1) = 2."""
+    from engine.models import make_arima_dlm
+
+    spec = make_arima_dlm(ar=[0.5, -0.3], ma=[0.2], sigma2=1.0)
+    assert spec.d == 2
+    assert spec.F.shape == (1, 2)
+    assert spec.G.shape == (2, 2)
+
+
+def test_arima_dlm_ar1_companion_form() -> None:
+    """AR(1): G should be [[phi]], W[0,0] should be sigma2 (plus nugget)."""
+    from engine.models import make_arima_dlm
+
+    phi = 0.7
+    spec = make_arima_dlm(ar=[phi], ma=[], sigma2=1.0)
+    np.testing.assert_allclose(spec.G[0, 0], phi)
+    np.testing.assert_allclose(spec.W[0, 0], 1.0 + 1e-10, atol=1e-9)
+
+
+def test_arima_dlm_ma1_companion_form() -> None:
+    """MA(1): r=2, G[0,:] = [0,0], W reflects MA structure."""
+    from engine.models import make_arima_dlm
+
+    theta = 0.4
+    spec = make_arima_dlm(ar=[], ma=[theta], sigma2=2.0)
+    assert spec.d == 2  # r = max(0, 1+1) = 2
+    # kappa = [1, theta, 0, ...] -> W = sigma2 * outer(kappa, kappa) + nugget*I
+    np.testing.assert_allclose(spec.W[0, 0], 2.0 * 1.0 + 1e-10, atol=1e-9)
+    np.testing.assert_allclose(spec.W[0, 1], 2.0 * theta, atol=1e-9)
+    np.testing.assert_allclose(spec.W[1, 0], 2.0 * theta, atol=1e-9)
+
+
+def test_arima_dlm_loglik_matches_statsmodels_ar1() -> None:
+    """AR(1) log-lik from DLM filter should match statsmodels ARIMA."""
+    from statsmodels.tsa.arima.model import ARIMA  # type: ignore[import-untyped]
+
+    from engine.models import make_arima_dlm
+
+    rng = np.random.default_rng(7)
+    phi, sigma2 = 0.7, 1.5
+    T = 150
+    y_1d = np.zeros(T)
+    eps = rng.normal(scale=np.sqrt(sigma2), size=T)
+    for t in range(1, T):
+        y_1d[t] = phi * y_1d[t - 1] + eps[t]
+    spec = make_arima_dlm(ar=[phi], ma=[], sigma2=sigma2)
+    fr = kalman_filter(spec, y_1d[:, None])
+    res = ARIMA(y_1d, order=(1, 0, 0)).fit()
+    # Allow generous tolerance: initialisation differs slightly
+    # (diffuse C0=100*I vs statsmodels exact stationary init)
+    np.testing.assert_allclose(fr.loglik, res.llf, atol=6.0)
+
+
+def test_arima_dlm_filter_runs() -> None:
+    """ARMA(2,1) DLM filter returns finite log-lik."""
+    from engine.models import make_arima_dlm
+
+    rng = np.random.default_rng(8)
+    spec = make_arima_dlm(ar=[0.5, -0.2], ma=[0.3], sigma2=1.0)
+    y = rng.standard_normal((80, 1))
+    fr = kalman_filter(spec, y)
+    assert np.isfinite(fr.loglik)
