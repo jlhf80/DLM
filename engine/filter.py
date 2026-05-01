@@ -286,3 +286,70 @@ def kalman_filter_tv(
         m_prev, C_prev = m_t, C_t
 
     return FilterResult(m=m, C=C, a=a, R=R, f=f, Q=Q, e=e, loglik=loglik)
+
+
+def kalman_filter_missing(spec: DLMSpec, y: NDArray[Any]) -> FilterResult:
+    """Kalman filter handling NaN observations (W&H §16.1; Petris §2.7).
+
+    For each time step t where `np.isnan(y[t]).any()` is True, the update
+    step is skipped entirely: the posterior equals the prior
+    (m_t = a_t, C_t = R_t), and no log-likelihood contribution is added.
+    Missing time points have e[t] = NaN.
+    """
+    if y.ndim != 2:
+        raise ValueError(f"y must be 2D (T, p), got shape {y.shape}")
+    T, p = y.shape
+    if T < 1:
+        raise ValueError("y must have at least one observation")
+    if p != spec.p:
+        raise ValueError(f"y observation dimension {p} does not match spec.p {spec.p}")
+
+    d = spec.d
+    F, G, V, W = spec.F, spec.G, spec.V, spec.W
+    m_prev = spec.m0
+    C_prev = spec.C0
+
+    m = np.empty((T, d))
+    C = np.empty((T, d, d))
+    a = np.empty((T, d))
+    R = np.empty((T, d, d))
+    f = np.empty((T, p))
+    Q = np.empty((T, p, p))
+    e = np.empty((T, p))
+    loglik = 0.0
+
+    log2pi = float(np.log(2.0 * np.pi))
+
+    for t in range(T):
+        # Prior for theta_t
+        a_t = G @ m_prev
+        R_t = _symmetrize(G @ C_prev @ G.T + W)
+
+        # One-step-ahead forecast
+        f_t = F @ a_t
+        Q_t = _symmetrize(F @ R_t @ F.T + V)
+
+        a[t], R[t] = a_t, R_t
+        f[t], Q[t] = f_t, Q_t
+
+        if np.isnan(y[t]).any():
+            # Skip update: posterior = prior
+            m_t, C_t = a_t, R_t
+            e[t] = np.full(p, np.nan)
+        else:
+            e_t = y[t] - f_t
+            FRt = F @ R_t
+            A_t = _solve_psd(Q_t, FRt).T
+            m_t = a_t + A_t @ e_t
+            Id = np.eye(d)
+            IAF = Id - A_t @ F
+            C_t = _symmetrize(IAF @ R_t @ IAF.T + A_t @ V @ A_t.T)
+            logdet_Q = _logdet_psd(Q_t)
+            quad = float(e_t @ _solve_psd(Q_t, e_t))
+            loglik += -0.5 * (p * log2pi + logdet_Q + quad)
+            e[t] = e_t
+
+        m[t], C[t] = m_t, C_t
+        m_prev, C_prev = m_t, C_t
+
+    return FilterResult(m=m, C=C, a=a, R=R, f=f, Q=Q, e=e, loglik=loglik)

@@ -354,3 +354,112 @@ def make_fourier_seasonal(
     if len(harmonic_specs) == 1:
         return harmonic_specs[0]
     return combine(*harmonic_specs)
+
+
+def make_arima_dlm(
+    ar: list[float],
+    ma: list[float],
+    sigma2: float,
+) -> DLMSpec:
+    """DLM in companion form for a causal stationary ARIMA(p, 0, q) process.
+
+    r = max(p, q + 1) where p = len(ar), q = len(ma).
+    State dim d = r.
+
+    Matrices (W&H §9.1-9.4):
+        F  = [[1, 0, ..., 0]]              (1, r)
+        G  = companion matrix              (r, r)
+             row 0 = [phi_1, ..., phi_p, 0, ..., 0]
+             rows 1..r-1: sub-diagonal of 1s
+        V  = 1e-10 * I(1)    (exact obs in theory; nugget for PSD check)
+        W  = sigma2 * outer(kappa, kappa) + 1e-10 * I(r)
+             kappa = [1, theta_1, ..., theta_q, 0, ..., 0]  (length r)
+        m0 = zeros(r)
+        C0 = 100 * I(r)
+
+    Parameters
+    ----------
+    ar : list[float]
+        AR coefficients phi_1, ..., phi_p (empty list = pure MA/noise).
+    ma : list[float]
+        MA coefficients theta_1, ..., theta_q (empty list = pure AR).
+    sigma2 : float
+        Innovation variance.
+    """
+    p_ar = len(ar)
+    q_ma = len(ma)
+    r = max(p_ar, q_ma + 1)
+
+    # Observation matrix
+    F = np.zeros((1, r))
+    F[0, 0] = 1.0
+
+    # Companion transition matrix
+    G = np.zeros((r, r))
+    for i, phi in enumerate(ar):
+        G[0, i] = phi
+    for i in range(1, r):
+        G[i, i - 1] = 1.0
+
+    # Moving-average polynomial coefficients (kappa)
+    kappa = np.zeros(r)
+    kappa[0] = 1.0
+    for j, theta in enumerate(ma):
+        kappa[j + 1] = theta
+
+    # State evolution noise covariance: rank-1 + nugget
+    _NUGGET = 1e-10
+    W = sigma2 * np.outer(kappa, kappa) + _NUGGET * np.eye(r)
+
+    # Observation noise: tiny nugget keeps DLMSpec PSD validation happy
+    V = _NUGGET * np.eye(1)
+
+    return DLMSpec(
+        F=F,
+        G=G,
+        V=V,
+        W=W,
+        m0=np.zeros(r),
+        C0=100.0 * np.eye(r),
+    )
+
+
+def make_multivariate_local_level(
+    p: int,
+    V: NDArray[Any] | list[float] | float,
+    W_level: float,
+) -> DLMSpec:
+    """Multivariate local level: p series sharing a common scalar level.
+
+    Observation equation (p-dimensional):
+        y_t = F theta_t + v_t,   F = ones((p, 1)),   v_t ~ N(0, V_obs)
+    State equation (scalar random walk):
+        theta_t = theta_{t-1} + w_t,   w_t ~ N(0, W_level)
+
+    Parameters
+    ----------
+    p : int
+        Number of observed series.
+    V : float or list[float] or (p, p) ndarray
+        Observation noise.  A scalar broadcasts to V * eye(p).
+        A length-p list becomes diag(V).
+    W_level : float
+        Variance of the scalar state random walk.
+    """
+    if isinstance(V, (int, float)):
+        V_mat = float(V) * np.eye(p)
+    elif isinstance(V, list):
+        V_mat = np.diag(np.array(V, dtype=float))
+    else:
+        V_mat = np.asarray(V, dtype=float)
+        if V_mat.shape != (p, p):
+            raise ValueError(f"V array must be ({p}, {p}), got {V_mat.shape}")
+
+    return DLMSpec(
+        F=np.ones((p, 1)),
+        G=np.array([[1.0]]),
+        V=V_mat,
+        W=np.array([[float(W_level)]]),
+        m0=np.zeros(1),
+        C0=100.0 * np.eye(1),
+    )
