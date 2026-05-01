@@ -32,4 +32,4 @@ jobs:
         run: pytest -q
 
       - name: Notebook smoke tests
-        run: pytest --nbmake notebooks/intermediate/ notebooks/advanced/ -q
+        run: pytest --nbmake notebooks/beginner/ notebooks/intermediate/ notebooks/advanced/ -q
