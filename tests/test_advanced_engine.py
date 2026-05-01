@@ -2,13 +2,11 @@
 from __future__ import annotations
 
 import numpy as np
-import pytest
 
 from engine.filter import kalman_filter
 from engine.models import make_local_level, make_local_linear_trend
 from engine.simulate import simulate
 from engine.smoother import rts_smoother
-
 
 # ---------------------------------------------------------------------------
 # FFBS
