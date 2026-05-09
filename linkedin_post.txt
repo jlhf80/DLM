@@ -1,0 +1,31 @@
+Dynamic Linear Models are one of the more underused tools in applied forecasting.
+They handle trend, seasonality, time-varying coefficients, missing data, and
+structural breaks — all in a unified probabilistic framework with uncertainty
+built in.
+
+I put together a three-tier notebook series covering the full methodology:
+
+▸ Beginner — Kalman filter, RTS smoother, LLT, seasonal models, MLE, PyMC intro
+▸ Intermediate — Discount factors, conjugate V estimation, dynamic regression, Fourier seasonal, model comparison
+▸ Advanced — FFBS / Gibbs sampling, intervention analysis, structural break monitoring, multivariate + missing data
+
+All implemented from scratch in pure NumPy. Grounded in West & Harrison's
+Bayesian Forecasting and Dynamic Models and Petris et al.'s Dynamic Linear
+Models with R.
+
+Worked solutions included for all 44 exercises across the three tiers.
+
+Repo in the comments (notebooks pre-executed — no setup needed to read through).
+
+#TimeSeries #BayesianStatistics #DataScience #Forecasting
+
+
+FIRST COMMENT
+-------------
+GitHub repo (notebooks pre-executed, worked solutions included):
+https://github.com/jlhf80/DLM
+
+
+TIMING
+------
+Post Tuesday or Wednesday, 8–9 am local time.
