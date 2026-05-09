@@ -104,4 +104,4 @@ pytest --nbmake notebooks/ -q      # notebook smoke tests
 
 ## License
 
-TBD — add a LICENSE file before distributing.
+MIT — see [LICENSE](LICENSE).
