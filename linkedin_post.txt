@@ -13,7 +13,7 @@ All implemented from scratch in pure NumPy. Grounded in West & Harrison's
 Bayesian Forecasting and Dynamic Models and Petris et al.'s Dynamic Linear
 Models with R.
 
-Worked solutions included for all 44 exercises across the three tiers.
+Worked solutions included for all 35 exercises across the three tiers.
 
 Repo in the comments (notebooks pre-executed — no setup needed to read through).
 

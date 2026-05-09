@@ -63,9 +63,9 @@ Worked solutions to all exercises, with pre-executed outputs.
 
 | Tier | Directory | Notebooks |
 |------|-----------|-----------|
-| Beginner | `solutions/beginner/` | B1–B6 (14 exercises) |
+| Beginner | `solutions/beginner/` | B1–B6 (15 exercises) |
 | Intermediate | `solutions/intermediate/` | I01–I05 (15 exercises) |
-| Advanced | `solutions/advanced/` | A06–A10 (15 exercises) |
+| Advanced | `solutions/advanced/` | A06–A10 (5 exercises) |
 
 ## Quickstart
 
