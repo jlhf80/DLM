@@ -4,6 +4,8 @@ A self-contained Jupyter notebook series for practitioners who want to build gen
 
 The goal is not just to run code, but to understand *why* the Kalman filter works, *what* each parameter controls, and *when* to reach for a DLM over simpler alternatives. Notebooks progress from first principles through advanced inference, with derivations, exercises, and a custom NumPy engine that keeps the math visible.
 
+[![Binder](https://mybinder.org/badge_logo.svg)](https://mybinder.org/v2/gh/jlhf80/DLM/main?urlpath=lab%2Ftree%2Fnotebooks%2Fbeginner%2F)
+
 ## Three learning tiers
 
 ### Beginner — `notebooks/beginner/`
@@ -46,6 +48,24 @@ Assumes comfortable familiarity with the full filter-smoother-forecast cycle.
 | `08_interventions_outliers.ipynb` | Level shifts, outlier detection, intervention analysis |
 | `09_monitoring_structural_breaks.ipynb` | Sequential Bayes factors; cusum monitoring |
 | `10_multivariate_missing_data.ipynb` | Multivariate DLMs; Kalman filter with missing observations |
+
+### Capstone — `notebooks/capstone/`
+
+End-to-end case study integrating all three tiers.
+
+| Notebook | Topic |
+|----------|-------|
+| `C1_full_workflow.ipynb` | Model selection → MLE → missing data → break detection → forecasting → PyMC |
+
+## Solution Notebooks
+
+Worked solutions to all exercises, with pre-executed outputs.
+
+| Tier | Directory | Notebooks |
+|------|-----------|-----------|
+| Beginner | `solutions/beginner/` | B1–B6 (15 exercises) |
+| Intermediate | `solutions/intermediate/` | I01–I05 (15 exercises) |
+| Advanced | `solutions/advanced/` | A06–A10 (5 exercises) |
 
 ## Quickstart
 
